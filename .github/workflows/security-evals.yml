@@ -51,10 +51,10 @@ jobs:
       CI_BUDGET_USD_REMAINING: '5.00'
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
           enable-cache: true
 
@@ -123,7 +123,7 @@ jobs:
         # red commit status. PRD-017 §6 (CI 회귀 차단) is the PR-time
         # gate; for nightly we want a tracker.
         if: failure() && github.event_name == 'schedule'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const today = new Date().toISOString().slice(0, 10);
