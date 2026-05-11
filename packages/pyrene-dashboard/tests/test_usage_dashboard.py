@@ -80,7 +80,7 @@ class TestTimezoneNormalization:
         utc_str = "2026-05-11T10:30:00+00:00"
         parsed = pendulum.parse(utc_str, tz="UTC")
         assert parsed is not None
-        local_tz = pendulum.local_timezone()  # type: ignore[operator]
+        local_tz = pendulum.local_timezone()  # type: ignore[operator,unused-ignore]
         if hasattr(parsed, "in_timezone"):
             local = parsed.in_timezone(local_tz)
             local_str = local.to_datetime_string()

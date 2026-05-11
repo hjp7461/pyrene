@@ -101,7 +101,7 @@ def _render_usage_table() -> None:
         return
 
     # Normalize timestamps to local timezone via pendulum
-    local_tz = pendulum.local_timezone()  # type: ignore[operator]
+    local_tz = pendulum.local_timezone()  # type: ignore[operator,unused-ignore]
     rows = []
     for rec in items:
         created_utc_str: str = rec.get("created_at", "")
