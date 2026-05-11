@@ -71,9 +71,11 @@ def test_expired_token_rejected(settings: JwtSettings) -> None:
 def test_tampered_signature_rejected(settings: JwtSettings) -> None:
     now = int(time.time())
     token = make_access_token(uuid4(), uuid4(), (), settings, now=now)
-    # Flip the last char of the signature segment.
+    # Replace the signature with a fixed invalid value. Single-char mutations
+    # on base64url signatures can be no-ops because the trailing bits of the
+    # last char are unused, decoding to the same bytes ~25% of the time.
     parts = token.split(".")
-    parts[-1] = parts[-1][:-1] + ("A" if parts[-1][-1] != "A" else "B")
+    parts[-1] = "invalid_signature_value"
     bad = ".".join(parts)
     with pytest.raises(InvalidTokenError):
         decode_token(bad, settings)
