@@ -60,7 +60,8 @@ def _render_trace_fallback() -> None:
         st.link_button("Open in Logfire", _LOGFIRE_URL, use_container_width=True)
 
     try:
-        data = fetch_audit_events(token, size=5)
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            data = fetch_audit_events(token, size=5)
         items: list[dict[str, Any]] = data.get("items", [])
 
         if not items:

@@ -76,16 +76,17 @@ def _render_usage_table() -> None:
         ).to_iso8601_string()
 
     try:
-        data = fetch_usage_records(
-            token,
-            page=int(page_number),
-            size=int(page_size),
-            order_by=str(filter_order),
-            user_id=filter_user_id.strip() or None,
-            agent_id=filter_agent_id.strip() or None,
-            since=since_str,
-            until=until_str,
-        )
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            data = fetch_usage_records(
+                token,
+                page=int(page_number),
+                size=int(page_size),
+                order_by=str(filter_order),
+                user_id=filter_user_id.strip() or None,
+                agent_id=filter_agent_id.strip() or None,
+                since=since_str,
+                until=until_str,
+            )
     except Exception as exc:
         st.error(friendly_error(exc, context="사용량 레코드"))
         return
