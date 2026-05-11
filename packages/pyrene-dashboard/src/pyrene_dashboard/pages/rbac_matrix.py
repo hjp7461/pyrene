@@ -19,7 +19,11 @@ import pandas as pd
 import streamlit as st
 
 from pyrene_dashboard import auth
-from pyrene_dashboard.api_client import fetch_data_permissions, fetch_rbac_matrix
+from pyrene_dashboard.api_client import (
+    fetch_data_permissions,
+    fetch_rbac_matrix,
+    friendly_error,
+)
 
 _GREEN = "#22c55e"
 _RED = "#ef4444"
@@ -71,7 +75,7 @@ def _render_rbac_matrix() -> None:
             " Use the API or CLI to modify permissions."
         )
     except Exception as exc:
-        st.error(f"Failed to load RBAC matrix: {exc}")
+        st.error(friendly_error(exc, context="RBAC 매트릭스"))
 
 
 @st.fragment(run_every=30)
@@ -114,7 +118,7 @@ def _render_data_permissions() -> None:
         styled = df.style.apply(_color_row, axis=1)
         st.dataframe(styled, use_container_width=True, hide_index=True)
     except Exception as exc:
-        st.error(f"Failed to load data permissions: {exc}")
+        st.error(friendly_error(exc, context="데이터 권한"))
 
 
 _render_rbac_matrix()

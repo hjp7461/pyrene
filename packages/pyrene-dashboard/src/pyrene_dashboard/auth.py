@@ -4,7 +4,8 @@ Design (PM Wave 0' amend):
 - Token is pasted in the sidebar as ``st.text_input(type="password")``.
 - On paste, ``GET /auth/me`` is called to validate + extract roles.
 - Admin gate: only users whose ``roles`` list contains ``"admin"`` pass.
-  Non-admin → ``st.error("Admin access required.")`` + ``st.stop()``.
+  Non-admin → 한국어 오류 메시지 ("관리자(admin) 권한이 없는 토큰입니다 …") +
+  ``return``. 메시지 매핑은 PRD-020 / ``api_client.friendly_error`` 참조.
 - Session TTL: ``st.session_state["auth_expires_at"]`` is set to
   ``now + 3600 s`` (1 h) on successful login. Every call to
   ``ensure_authenticated()`` checks expiry and auto-logs out if expired.
@@ -25,7 +26,7 @@ import time
 
 import streamlit as st
 
-from pyrene_dashboard.api_client import fetch_me
+from pyrene_dashboard.api_client import fetch_me, friendly_error
 
 # Number of seconds a pasted token session is trusted locally.
 # The real expiry is encoded in the JWT; this is a UX safety net.
@@ -95,18 +96,22 @@ def show_login() -> None:
             if raw.startswith("Bearer "):
                 raw = raw[len("Bearer ") :]
             if not raw:
-                st.error("Token cannot be empty.")
+                st.error(
+                    "토큰을 입력하세요 — 관리자에게서 발급받은 JWT access token이 필요합니다"
+                )
                 return
 
             try:
                 me = fetch_me(raw)
             except Exception as exc:
-                st.error(f"Authentication failed: {exc}")
+                st.error(friendly_error(exc, context="인증"))
                 return
 
             roles: list[str] = me.get("roles", [])
             if "admin" not in roles:
-                st.error("Admin access required. Your token does not carry the admin role.")
+                st.error(
+                    "관리자(admin) 권한이 없는 토큰입니다 — 관리자에게 권한 부여를 요청하세요"
+                )
                 return
 
             _store_session(raw, roles)

@@ -55,10 +55,11 @@ async def test_unexpected_model_behavior_wrapped_and_retried(
             raise UnexpectedModelBehavior(
                 "Tool 'run_aggregate' exceeded max retries count of 0"
             )
+        rows: list[dict[str, Any]] = [{"col": 1}]
         return _FakeRun(
             AnalystResponse(
                 sql="SELECT 1",
-                rows=({"col": 1},),
+                rows=rows,
                 row_count=1,
                 truncated=False,
                 analysis="ok",

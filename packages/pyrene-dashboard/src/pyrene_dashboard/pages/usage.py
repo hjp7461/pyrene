@@ -19,7 +19,7 @@ import pendulum
 import streamlit as st
 
 from pyrene_dashboard import auth
-from pyrene_dashboard.api_client import fetch_usage_records
+from pyrene_dashboard.api_client import fetch_usage_records, friendly_error
 
 st.title("Usage by User / Agent")
 
@@ -87,7 +87,7 @@ def _render_usage_table() -> None:
             until=until_str,
         )
     except Exception as exc:
-        st.error(f"Failed to load usage records: {exc}")
+        st.error(friendly_error(exc, context="사용량 레코드"))
         return
 
     items: list[dict[str, Any]] = data.get("items", [])
