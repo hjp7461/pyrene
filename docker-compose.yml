@@ -81,7 +81,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8501/_stcore/health || exit 1"]
+      # PRD-019 F-2: pyrene-dashboard image (python:3.13-slim 기반)에 curl이
+      # 없어 기존 `curl -f ...` healthcheck가 항상 unhealthy를 반환했다.
+      # urllib.request는 표준 라이브러리라 추가 설치 불필요. pyrene-api와
+      # 동일 패턴.
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; urllib.request.urlopen(\"http://localhost:8501/_stcore/health\", timeout=2); sys.exit(0)' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 6

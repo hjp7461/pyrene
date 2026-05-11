@@ -260,9 +260,11 @@ async def test_me_with_tampered_token_returns_401(client: httpx.AsyncClient) -> 
         json={"email": "dave@example.com", "password": "supersecret"},
     )
     access = signup.json()["access_token"]
-    # Flip last char of signature segment.
+    # Replace the signature with a fixed invalid value. Single-char mutations
+    # on base64url signatures can be no-ops because the trailing bits of the
+    # last char are unused, decoding to the same bytes ~25% of the time.
     parts = access.split(".")
-    parts[-1] = parts[-1][:-1] + ("A" if parts[-1][-1] != "A" else "B")
+    parts[-1] = "invalid_signature_value"
     bad = ".".join(parts)
 
     response = await client.get(

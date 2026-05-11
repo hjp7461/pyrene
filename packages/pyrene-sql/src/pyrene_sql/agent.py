@@ -24,6 +24,7 @@ from typing import Any
 import logfire
 from pydantic import Field
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from pyrene_core import (
     SPAN_AGENT_RUN,
@@ -31,6 +32,7 @@ from pyrene_core import (
     SPAN_SQL_RUN_JOIN,
     SPAN_SQL_RUN_SELECT,
     Confidence,
+    ModelToolValidationError,
     PyreneError,
     SqlSyntaxError,
     StrictBaseModel,
@@ -547,7 +549,15 @@ async def run_with_retry(
                     f"[Previous attempt {attempt_idx - 1} failed: {last_error}. "
                     "Please fix the SQL and try again.]"
                 )
-            result = await sql_analyst.run(prompt, deps=deps)
+            # PRD-019 F-4: builder.py sets retries=0 on each tool, so an
+            # LLM that emits malformed tool args raises UnexpectedModelBehavior
+            # rather than something the wrapper can classify. Wrap into
+            # ModelToolValidationError (RetryableError) so decide() applies
+            # the standard N1-N4 policy.
+            try:
+                result = await sql_analyst.run(prompt, deps=deps)
+            except UnexpectedModelBehavior as exc:
+                raise ModelToolValidationError(str(exc)) from exc
             return result.output
 
         wrapper = RetryWrapper(max_attempts=max_attempts)

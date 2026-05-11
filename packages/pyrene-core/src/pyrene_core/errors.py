@@ -36,6 +36,19 @@ class SqlSyntaxError(RetryableError):
     """Bad SQL: syntax error, unknown relation / column, type mismatch."""
 
 
+class ModelToolValidationError(RetryableError):
+    """LLM called a structured tool with arguments that failed validation.
+
+    PRD-019 F-4: Pydantic AI raises `UnexpectedModelBehavior` when
+    `agent.tool(retries=0)` is configured (builder.py:118) and tool input
+    validation fails. The outer `RetryWrapper` only catches `PyreneError`,
+    so without this wrap the failure propagates unhandled and the external
+    retry pipeline is short-circuited. Wrapping into a RetryableError lets
+    decide() apply the N1-N4 policy uniformly — typically classified as
+    `retry` (LLM corrects on next attempt) up to the 3-attempt cap.
+    """
+
+
 class EmptyResultError(NonRetryableError):
     """N1 (PRD-003 §2.2): SELECT returned zero rows — retry will yield the same."""
 
@@ -50,6 +63,7 @@ class PermissionDeniedError(NonRetryableError):
 
 __all__ = [
     "EmptyResultError",
+    "ModelToolValidationError",
     "NonRetryableError",
     "PermissionDeniedError",
     "PyreneError",
