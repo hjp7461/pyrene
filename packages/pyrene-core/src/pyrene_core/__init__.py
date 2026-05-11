@@ -4,6 +4,7 @@ from pyrene_core.audit import AuditEvent, AuditOutcome, AuditSink, _StubAuditSin
 from pyrene_core.auth.context import UserContext
 from pyrene_core.errors import (
     EmptyResultError,
+    ModelToolValidationError,
     NonRetryableError,
     PermissionDeniedError,
     PyreneError,
@@ -39,6 +40,7 @@ __all__ = [
     "Confidence",
     "EmptyResultError",
     "InstrumentationStatus",
+    "ModelToolValidationError",
     "NonRetryableError",
     "OrderBySpec",
     "PermissionDeniedError",

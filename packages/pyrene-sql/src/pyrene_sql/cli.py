@@ -96,6 +96,13 @@ async def _run_ask(question: str) -> tuple[AnalystResponse, str | None]:
 
     settings = Settings()  # type: ignore[call-arg]
 
+    # PRD-019 F-3: Pydantic AI providers read os.environ directly; pydantic-
+    # settings populates the Settings object but does not export to environ.
+    # setdefault preserves shell-exported values for advanced users while
+    # making .env-only setup work for fresh installs.
+    if settings.anthropic_api_key:
+        os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
+
     # PRD-006 §2.2 F1: missing LOGFIRE_TOKEN must not block the agent.
     # `if-token-present` opts in only when a token is set; spans still flow
     # through any locally-attached processors, and Pydantic AI / SQLAlchemy

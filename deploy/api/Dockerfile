@@ -20,7 +20,11 @@ COPY packages /app/packages
 COPY deploy/api/app.py /app/app.py
 
 # Install workspace (editable) so every pyrene-* package is importable.
-RUN uv sync --frozen --no-dev
+# PRD-019 F-1: `--all-packages` matches CI (ci.yml:23); without it only the
+# root's direct deps (pyrene-gateway transitive closure) install, leaving
+# pyrene-audit / pyrene-budget / pyrene-metering / pyrene-rbac /
+# pyrene-data-rbac / pyrene-mcp-tools absent → app.py import fails at runtime.
+RUN uv sync --all-packages --frozen --no-dev
 
 EXPOSE 8000
 
