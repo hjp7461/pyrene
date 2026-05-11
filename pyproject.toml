@@ -1,0 +1,140 @@
+[project]
+name = "pyrene"
+version = "0.1.0"
+description = "Self-hosted control plane for LLM agents — RBAC, cost metering, MCP gateway"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pyrene-gateway",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+pyrene-gateway = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "testcontainers[postgres]>=4.7",
+    "types-pyyaml>=6.0",
+    "streamlit>=1.57.0",
+    "httpx>=0.28.1",
+    "pendulum>=3.2.0",
+    "cachetools>=7.1.1",
+    "pandas>=3.0.2",
+    "pandas-stubs>=3.0.0.260204",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = [
+    "packages/pyrene-core/src",
+    "packages/pyrene-sql/src",
+    "packages/pyrene-auth/src",
+    "packages/pyrene-agents/src",
+    "packages/pyrene-gateway/src",
+    "packages/pyrene-audit/src",
+    "packages/pyrene-metering/src",
+    "packages/pyrene-rbac/src",
+    "packages/pyrene-mcp-tools/src",
+    "packages/pyrene-data-rbac/src",
+    "packages/pyrene-budget/src",
+    "packages/pyrene-dashboard/src",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",      # pycodestyle, pyflakes
+    "I",                # isort
+    "N",                # pep8-naming
+    "UP",               # pyupgrade
+    "B",                # flake8-bugbear
+    "C4",               # flake8-comprehensions
+    "SIM",              # flake8-simplify
+    "RUF",              # ruff-specific
+]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's `Depends(...)` in argument defaults is the canonical idiom for
+# the framework; B008 is too strict here. Routers and dependencies modules
+# in pyrene-auth opt out.
+"packages/pyrene-auth/src/pyrene_auth/routes/**/*.py" = ["B008"]
+"packages/pyrene-auth/src/pyrene_auth/dependencies.py" = ["B008"]
+# `PgUUID` is the conventional alias for the Postgres UUID dialect type.
+"packages/pyrene-auth/src/pyrene_auth/models.py" = ["N811"]
+"packages/pyrene-agents/src/pyrene_agents/models.py" = ["N811"]
+"packages/pyrene-agents/src/pyrene_agents/routes/**/*.py" = ["B008"]
+"packages/pyrene-gateway/src/pyrene_gateway/models.py" = ["N811"]
+"packages/pyrene-gateway/src/pyrene_gateway/routes/**/*.py" = ["B008"]
+"packages/pyrene-audit/src/pyrene_audit/models.py" = ["N811"]
+"packages/pyrene-audit/src/pyrene_audit/routes/**/*.py" = ["B008"]
+"packages/pyrene-metering/src/pyrene_metering/models.py" = ["N811"]
+"packages/pyrene-metering/src/pyrene_metering/routes/**/*.py" = ["B008"]
+"packages/pyrene-rbac/src/pyrene_rbac/models.py" = ["N811"]
+"packages/pyrene-rbac/src/pyrene_rbac/routes/**/*.py" = ["B008"]
+"packages/pyrene-data-rbac/src/pyrene_data_rbac/models.py" = ["N811"]
+"packages/pyrene-data-rbac/src/pyrene_data_rbac/routes/**/*.py" = ["B008"]
+"packages/pyrene-budget/src/pyrene_budget/models.py" = ["N811"]
+"packages/pyrene-budget/src/pyrene_budget/routes/**/*.py" = ["B008"]
+# Streamlit pages execute at module level (top-level statements are the page body).
+# E402: module-level import not at top of file (st calls before imports in pages).
+"packages/pyrene-dashboard/src/pyrene_dashboard/pages/*.py" = ["E402"]
+# App.py uses module-level st calls after import (st.set_page_config must be first).
+"packages/pyrene-dashboard/src/pyrene_dashboard/app.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+disallow_untyped_decorators = true
+no_implicit_reexport = true
+explicit_package_bases = true
+namespace_packages = true
+exclude = [
+    "packages/pyrene-agents/tests/integration/conftest\\.py",
+    "packages/pyrene-auth/tests/integration/conftest\\.py",
+    "packages/pyrene-gateway/tests/integration/conftest\\.py",
+    "packages/pyrene-audit/tests/integration/conftest\\.py",
+    "packages/pyrene-metering/tests/integration/conftest\\.py",
+    "packages/pyrene-rbac/tests/integration/conftest\\.py",
+    "packages/pyrene-data-rbac/tests/integration/conftest\\.py",
+    "packages/pyrene-budget/tests/integration/conftest\\.py",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = [
+    "packages/pyrene-core/tests",
+    "packages/pyrene-sql/tests",
+    "packages/pyrene-auth/tests",
+    "packages/pyrene-agents/tests",
+    "packages/pyrene-gateway/tests",
+    "packages/pyrene-audit/tests",
+    "packages/pyrene-metering/tests",
+    "packages/pyrene-rbac/tests",
+    "packages/pyrene-mcp-tools/tests",
+    "packages/pyrene-data-rbac/tests",
+    "packages/pyrene-budget/tests",
+    "packages/pyrene-dashboard/tests",
+]
+addopts = "--import-mode=importlib"
+markers = [
+    "integration: requires Docker (testcontainers Postgres)",
+    "live: requires live model API access (LIVE_TESTS=1 + provider key)",
+]
+# PRD-006 / PLAN-006: Logfire emits `LogfireNotConfiguredWarning` whenever
+# spans are created before `configure_logfire()`. Tests that explicitly
+# exercise the observability layer call `configure_logfire(...)`; the rest
+# (integration tests touching the indexer / agent without a fixture) are
+# expected to run without a configured Logfire backend, so we silence the
+# warning here. Set `LOGFIRE_IGNORE_NO_CONFIG=0` locally to surface it.
+filterwarnings = [
+    "ignore:.*logfire.configure.*:UserWarning",
+]

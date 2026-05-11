@@ -1,0 +1,32 @@
+-- PLAN-018 Day 1 §2 — demo seed.
+--
+-- Creates the three demo identities used by the README quickstart and
+-- `bin/demo.sh` (admin / analyst / viewer). The Alembic migration chain
+-- 0001..0008 must run before this script can populate the
+-- auth_users/auth_roles/auth_user_team_role tables — so this initdb
+-- script intentionally does NOT INSERT into those tables. Instead it
+-- documents the seed contract that the migration `0009_demo_seed`
+-- (added later, gated by ENV) will fulfil.
+--
+-- For Phase 2 close-out the demo identities + default RBAC matrix +
+-- budget limits are seeded by `bin/demo.sh` via `pyrene-auth init-admin`
+-- and a small inline SQL block at scenario boot. Keeping the seed in a
+-- script (rather than initdb) lets us re-run scenarios against a wiped
+-- database without rebuilding the volume.
+--
+-- Contract (mirror in bin/demo.sh):
+--   admin   : admin@example.com   / changeme-locally-only  | role=admin
+--   analyst : analyst@example.com / analyst-demo           | role=analyst
+--   viewer  : viewer@example.com  / viewer-demo            | role=viewer
+--
+-- Daily budget caps:
+--   analyst → $5.00
+--   viewer  → $1.00
+--
+-- RBAC matrix (TOOL_RBAC=20 + DATA_RBAC=30 hooks):
+--   admin    → all tools, all schemas
+--   analyst  → run_select/run_join/run_aggregate + filesystem.write
+--              schema=public, columns minus payment.amount masked for viewer
+--   viewer   → run_select only, schema=public, payment.* DENIED
+
+\echo 'demo seed contract recorded — actual INSERTs happen post-migration via bin/demo.sh'

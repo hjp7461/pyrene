@@ -1,0 +1,34 @@
+[project]
+name = "pyrene-agents"
+version = "0.1.0"
+description = "Pyrene Phase 2: Agent registry (AgentSpec / AgentVersion CRUD + builder + run)"
+requires-python = ">=3.13"
+dependencies = [
+    "pyrene-core",
+    "pyrene-sql",
+    "pyrene-auth",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pydantic-ai>=1.93,<2.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "fastapi>=0.111",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.scripts]
+pyrene-agents = "pyrene_agents.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyrene_agents"]
+
+[tool.uv.sources]
+pyrene-core = { workspace = true }
+pyrene-sql = { workspace = true }
+pyrene-auth = { workspace = true }

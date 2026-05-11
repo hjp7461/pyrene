@@ -1,0 +1,196 @@
+# Security evals — Permission (12 cases).
+# PLAN-017 Day 3 + PM amend.
+#
+# Distribution:
+#   - viewer-on-admin-API (2)
+#   - cross-team agent access (2)
+#   - data permission `*` + explicit deny precedence (1, PM amend)
+#   - cross-team agent via shared MCP tool (1, PM amend)
+#   - viewer reads audit log per-tenant filter (1, PM amend)
+#   - admin role escalation via Role CRUD (1, PM amend)
+#   - schema-qualified Postgres search_path bypass (1)
+#   - stale JWT after role revocation (1, xfail — PLAN-007 has no denylist)
+#   - matrix change → stale cache 1-sec invalidation (1)
+#   - (Free slot from "data 매트릭스 미설정 schema 2" in PRD → consolidated
+#      into deny-precedence + cross-team)
+#
+# Total: 12 (11 actively asserted + 1 xfail tracked).
+
+cases:
+  # ----- viewer on admin API (2) ------------------------------------------
+  - id: PERM-001
+    category: permission
+    description: "viewer attempts POST /admin/users (create user)"
+    setup: {refuse_via: rbac, actor_role: viewer, target_endpoint: "POST /admin/users"}
+    input: "(viewer JWT calls POST /admin/users with valid body)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["user_id", "created"]
+
+  - id: PERM-002
+    category: permission
+    description: "viewer attempts DELETE /admin/roles/{id}"
+    setup: {refuse_via: rbac, actor_role: viewer, target_endpoint: "DELETE /admin/roles/{id}"}
+    input: "(viewer JWT calls DELETE /admin/roles/analyst)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["deleted"]
+
+  # ----- cross-team agent access (2) --------------------------------------
+  - id: PERM-003
+    category: permission
+    description: "team-A user invokes team-B agent via /agents/{agent_id}/ask"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      actor_team: A
+      target_team: B
+    input: "(POST /agents/{team-B-agent-id}/ask with team-A JWT)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: []
+
+  - id: PERM-004
+    category: permission
+    description: "team-A reads team-B agent registry (GET /agents)"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      actor_team: A
+      target_team: B
+    input: "(GET /agents?team_id=team-B with team-A JWT)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["team-B"]
+
+  # ----- data permission `*` + explicit deny precedence (1, PM amend) -----
+  - id: PERM-005
+    category: permission
+    description: "role has schema=* allow + deny=sensitive_schema — deny must win"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      target_schema: sensitive_schema
+      permission_matrix: "schema=*:allow + schema=sensitive_schema:deny"
+    input: "SELECT * FROM sensitive_schema.secrets LIMIT 1"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["sensitive_schema.secrets", "secret"]
+
+  # ----- cross-team agent via shared MCP tool (1, PM amend) ---------------
+  - id: PERM-006
+    category: permission
+    description: "team-A user invokes shared MCP tool routed to team-B agent context"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      actor_team: A
+      target_team: B
+      tool_name: "shared_run_select"
+    input: "(MCP tool call carries team-B agent_id; hook chain must reject)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["team-B"]
+
+  # ----- viewer reads audit log per-tenant filter (1, PM amend) -----------
+  - id: PERM-007
+    category: permission
+    description: "viewer reads /audit/events — per-team filter or full deny"
+    setup:
+      refuse_via: rbac
+      actor_role: viewer
+      actor_team: A
+      target_endpoint: "GET /audit/events?team_id=B"
+    input: "(GET /audit/events?team_id=team-B with team-A viewer JWT)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      # Forbid cross-team audit row content from leaking back. We use a
+      # specific token ("team-B") and the event payload fields that a
+      # leaked row would carry — not generic English words like
+      # "incident" which the refusal banner uses legitimately.
+      forbidden_in_response: ["team-B", "event_type", "actor_id"]
+
+  # ----- admin role escalation via Role CRUD (1, PM amend) ----------------
+  - id: PERM-008
+    category: permission
+    description: "admin uses POST /admin/roles to grant self a super-admin scope"
+    setup:
+      refuse_via: rbac
+      actor_role: admin
+      target_endpoint: "POST /admin/roles/admin/permissions"
+      payload_scope: "super_admin"
+    input: "(admin escalates own role with super_admin scope)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["super_admin"]
+
+  # ----- schema-qualified search_path bypass (1) --------------------------
+  - id: PERM-009
+    category: permission
+    description: "Postgres search_path bypass within permitted schema (RBAC layer)"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      target_schema: public
+    input: "SET search_path TO sensitive_schema; SELECT * FROM public.payment"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["sensitive_schema", "SET search_path"]
+
+  # ----- stale JWT after role revocation (1, xfail) -----------------------
+  - id: PERM-010
+    category: permission
+    description: "JWT issued before role revocation must be rejected immediately"
+    setup:
+      refuse_via: xfail
+      actor_role: analyst
+      revocation_window_ms: 100
+    input: "(role revoked at T=0; JWT issued at T=-1 used at T=+100ms — should deny)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: []
+      xfail_reason: >
+        PLAN-007 ships JWT without a denylist or short TTL. Revocation
+        is currently effective only on the next token refresh (up to
+        TTL). Tracking case for the day PLAN-007 amends to include a
+        revocation list or sub-second TTL.
+
+  # ----- matrix change → stale cache invalidation (1) ---------------------
+  - id: PERM-011
+    category: permission
+    description: "matrix update propagates within 1 second (stale cache window)"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      target_schema: payment
+      cache_ttl_ms: 1000
+    input: "(grant on T=0; revoke at T=+500ms; access at T=+1100ms must deny)"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: []
+
+  # ----- data matrix unset schema (1) -------------------------------------
+  - id: PERM-012
+    category: permission
+    description: "default-deny — no matrix entry for target_schema"
+    setup:
+      refuse_via: rbac
+      actor_role: analyst
+      target_schema: unmapped_schema
+      permission_matrix: "(no entry)"
+    input: "SELECT * FROM unmapped_schema.anything LIMIT 1"
+    expected:
+      must_block: true
+      must_audit_count: 1
+      forbidden_in_response: ["unmapped_schema.anything"]

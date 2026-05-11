@@ -1,0 +1,136 @@
+name: Security Evals
+
+# ADR-012 §1 stage 6 (`security-evals`) — dedicated workflow per PLAN-017
+# Wave 9 §Day 3 CI 통합. PR + nightly cron share this file (the same job
+# definitions); the trigger paths fan out so unrelated PRs do not pay
+# the gate.
+#
+# Why a separate workflow from `evals.yml`:
+#   - The accuracy / performance evals (datasets A/B/C/D) cache LLM
+#     responses and re-run them. Security evals are deterministic
+#     (driver-level mock) and need zero recordings. Separating the
+#     files keeps each workflow's `paths` filter sharp.
+#   - PLAN-017 mandates the full 42-case sweep (no sampling). The
+#     workflow re-runs all three categories on every PR that touches
+#     the security tree.
+#   - The brief lists ANTHROPIC_API_KEY as required, but the mock
+#     driver does not call any model. The key is wired so a future
+#     amendment that adds a "live security probes" stage (PRD-017 §3.1
+#     out-of-scope #C) can opt-in without redoing the workflow.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/pyrene-sql/src/pyrene_sql/evals/security/**'
+      - 'packages/pyrene-sql/tests/evals/security/**'
+      - 'packages/pyrene-sql/tests/baselines/security/**'
+      - 'packages/pyrene-sql/tests/integration/test_evals_security_baselines.py'
+      - 'packages/pyrene-sql/tests/unit/test_evals_*_security.py'
+      - '.github/workflows/security-evals.yml'
+  push:
+    branches: [main, master]
+  schedule:
+    # 02:30 KST nightly (17:30 UTC) — staggered behind `evals.yml`
+    # (17:00 UTC) so a flaky upstream stage cannot starve us.
+    - cron: '30 17 * * *'
+  workflow_dispatch:
+
+jobs:
+  # ----- security-evals: full 42-case run, all three categories ----------
+  # ADR-012 stage 6. PR-blocking. The brief specifies "보안은 sample이
+  # 아니라 전수" — 1 failed case = red CI.
+  security-evals:
+    name: security-evals (42 cases, mocked driver)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # ADR-012 §3 (b): per-job budget counter, propagated for any
+      # downstream stage that calls a model. Mock driver does not, so
+      # this is informational. ANTHROPIC_API_KEY is wired for the
+      # future live-probe stage (PRD-017 out-of-scope #C escape hatch).
+      CI_BUDGET_USD_REMAINING: '5.00'
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-packages --dev
+
+      - name: Lint security-evals module
+        # Quick guard — ruff catches the easy regressions before the
+        # heavier pytest run.
+        run: |
+          uv run ruff check \
+            packages/pyrene-sql/src/pyrene_sql/evals/security \
+            packages/pyrene-sql/tests/unit/test_evals_models_security.py \
+            packages/pyrene-sql/tests/unit/test_evals_driver_security.py \
+            packages/pyrene-sql/tests/integration/test_evals_security_baselines.py
+
+      - name: Type check security-evals module
+        run: |
+          uv run mypy --strict \
+            packages/pyrene-sql/src/pyrene_sql/evals/security
+
+      - name: Unit tests -- security models + driver
+        # Wave 9 unique naming: every test file ends in `_security`.
+        run: |
+          uv run pytest -v \
+            packages/pyrene-sql/tests/unit/test_evals_models_security.py \
+            packages/pyrene-sql/tests/unit/test_evals_driver_security.py
+
+      - name: Integration test -- 42 cases vs baselines
+        # The dedicated security-evals stage runs the whole 42-case
+        # sweep (bypass 17 + cost 13 + permission 12). PR-blocking.
+        run: |
+          uv run pytest -v \
+            packages/pyrene-sql/tests/integration/test_evals_security_baselines.py
+
+      - name: Run by category (smoke summary)
+        # Re-runs each category with `-k` so the workflow log shows
+        # three separate pass/fail counts. Helps triage which bucket
+        # regressed when a PR fails the gate.
+        run: |
+          for cat in bypass cost permission; do
+            echo "::group::category=$cat"
+            uv run pytest -v \
+              "packages/pyrene-sql/tests/integration/test_evals_security_baselines.py::test_security_dataset_matches_baselines[$cat]"
+            echo "::endgroup::"
+          done
+
+      - name: Verify baselines were not silently regenerated
+        # ADR-012 §4: baseline changes require the `baseline-override`
+        # label. Refuse to merge if the working tree is dirty under
+        # `tests/baselines/security/` after the eval run.
+        run: |
+          if [ -n "$(git status --porcelain packages/pyrene-sql/tests/baselines/security)" ]; then
+            echo "::error::Security baselines were modified during the run."
+            echo "If intentional, send a separate PR with the"
+            echo "'baseline-override' label and CODEOWNERS approval."
+            git diff packages/pyrene-sql/tests/baselines/security
+            exit 1
+          fi
+
+      - name: Open issue on nightly regression
+        # Nightly cron escalates to a GitHub Issue rather than just a
+        # red commit status. PRD-017 §6 (CI 회귀 차단) is the PR-time
+        # gate; for nightly we want a tracker.
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().slice(0, 10);
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `security-evals nightly regression -- ${today}`,
+              body: 'security-evals failed on nightly cron. See workflow logs. PRD-017 section 6 escalation.',
+              labels: ['security-evals-regression', 'evals-regression']
+            });

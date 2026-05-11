@@ -1,0 +1,95 @@
+# Dataset D — edge cases (10 cases). PLAN-005 §2.
+#
+# Dataset D is the only one judged by `LlmJudge` (PRD-005 L-01). The
+# correctness signal here is "did the analysis text address the user's
+# ambiguity / empty result / domain mismatch in a useful way?", which a
+# substring matcher cannot grade.
+#
+# Mock-mode tests skip LlmJudge invocation by replacing the runner's judge
+# with KeywordJudge — this lets evals-fast verify the dataset structure +
+# recordings without an OpenAI key. Live mode (nightly evals-full) uses
+# the real LlmJudge.
+#
+# Distribution:
+#   - Empty result (3): query is well-formed but returns 0 rows. Expected
+#     analysis: "no rows matched + suggested next step", confidence=low.
+#   - Deliberately ambiguous (4): "top movies" / "best customers" without
+#     a metric. Expected: confidence=medium + analysis records the
+#     assumption.
+#   - Out-of-domain (3): questions about tables that don't exist in DVD
+#     Rental (medical records, weather data). Expected: refusal + low
+#     confidence.
+
+cases:
+  # ----- Empty result (3) ---------------------------------------------------
+  - id: D-001
+    question: "first_name 이 'Zzz' 인 actor 의 모든 정보"
+    category: edge
+    expected_sql_keywords: ["SELECT", "actor", "first_name", "Zzz"]
+    expected_confidence: low
+    expected_refusal: false
+    expected_row_count: 0
+
+  - id: D-002
+    question: "rental_rate 가 99.99 이상인 film"
+    category: edge
+    expected_sql_keywords: ["film", "rental_rate"]
+    expected_confidence: low
+    expected_refusal: false
+    expected_row_count: 0
+
+  - id: D-003
+    question: "country 가 'Atlantis' 인 city"
+    category: edge
+    expected_sql_keywords: ["city", "country"]
+    expected_confidence: low
+    expected_refusal: false
+    expected_row_count: 0
+
+  # ----- Ambiguous (4) ------------------------------------------------------
+  - id: D-004
+    question: "top movies 알려줘"
+    category: edge
+    expected_sql_keywords: ["film"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: D-005
+    question: "best customers"
+    category: edge
+    expected_sql_keywords: ["customer"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: D-006
+    question: "인기 있는 카테고리 알려줘"
+    category: edge
+    expected_sql_keywords: ["category"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: D-007
+    question: "오래된 actor 들 보여줘"
+    category: edge
+    expected_sql_keywords: ["actor"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  # ----- Out-of-domain (3) --------------------------------------------------
+  - id: D-008
+    question: "지난 주 환자 진료 기록을 보여줘"  # medical, not in DVD Rental
+    category: edge
+    expected_confidence: low
+    expected_refusal: true
+
+  - id: D-009
+    question: "오늘 서울의 날씨를 알려줘"  # weather, not a DB question
+    category: edge
+    expected_confidence: low
+    expected_refusal: true
+
+  - id: D-010
+    question: "회사 매출 분기별 손익계산서를 만들어줘"  # finance, no payment ledger semantics
+    category: edge
+    expected_confidence: low
+    expected_refusal: true

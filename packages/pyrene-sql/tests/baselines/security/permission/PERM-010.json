@@ -1,0 +1,7 @@
+{
+  "case_id": "PERM-010",
+  "expected_passed": false,
+  "expected_blocked": false,
+  "expected_audit_count": 0,
+  "response_text_sha256": "05dd5f3b1816a5fc3823927ad5471127eab0cff9df057c2d8f46d273923c09e5"
+}

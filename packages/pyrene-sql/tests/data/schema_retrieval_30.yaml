@@ -1,0 +1,117 @@
+# 30 natural-language queries that exercise PRD-002 top-3 retrieval against
+# the DVD Rental schema. PLAN-002 §77, §90, §97.
+#
+# Each case lists one or more `expected_tables` — the retriever passes if the
+# top-3 result for that query contains AT LEAST ONE of them (S2/S3 in
+# PRD-002 §2.1 are written the same way). Some queries genuinely need
+# multiple tables (e.g. revenue + JOIN), and we only require coverage of at
+# least one — the agent fills in the rest via the second-pass schema fetch.
+#
+# Distribution:
+#   - Aggregation / metric ............ 10 (cases 01-10)
+#   - JOIN-heavy ...................... 10 (cases 11-20)
+#   - Simple filter ................... 10 (cases 21-30)
+# Korean ↔ English mix is ~50/50 to mirror the demo script.
+#
+# Why this file is committed:
+#   The retrieval evals are the regression guard for L-03 (chunk strategy).
+#   If retrieval accuracy drops below 90% on this dataset, the integration
+#   test fails and we know to revisit the chunk-per-table vs chunk-per-column
+#   decision before shipping further work.
+
+cases:
+  # ----- Aggregation / metric (10) ------------------------------------------
+  - id: agg-01
+    query: "지난 분기 매출이 가장 많은 영화 카테고리 5개"
+    expected_tables: [payment, rental, inventory, film, film_category, category]
+  - id: agg-02
+    query: "Top 5 films by total revenue"
+    expected_tables: [payment, rental, inventory, film]
+  - id: agg-03
+    query: "월별 결제 총액 추이"
+    expected_tables: [payment]
+  - id: agg-04
+    query: "Average rental duration per category"
+    expected_tables: [rental, inventory, film, film_category, category]
+  - id: agg-05
+    query: "가장 많이 빌린 상위 10편의 영화"
+    expected_tables: [rental, inventory, film]
+  - id: agg-06
+    query: "Number of rentals handled by each staff member"
+    expected_tables: [rental, staff]
+  - id: agg-07
+    query: "고객별 누적 결제 금액 합계"
+    expected_tables: [payment, customer]
+  - id: agg-08
+    query: "Films grouped by MPAA rating with their count"
+    expected_tables: [film]
+  - id: agg-09
+    query: "매장별 일별 매출"
+    expected_tables: [payment, staff, store]
+  - id: agg-10
+    query: "Average payment amount per rental"
+    expected_tables: [payment, rental]
+
+  # ----- JOIN-heavy (10) ----------------------------------------------------
+  - id: join-11
+    query: "각 영화에 출연한 배우 목록을 영화 제목과 함께"
+    expected_tables: [film_actor, film, actor]
+  - id: join-12
+    query: "List customers along with the city and country they live in"
+    expected_tables: [customer, address, city, country]
+  - id: join-13
+    query: "Drama 카테고리에 속한 영화 제목"
+    expected_tables: [category, film_category, film]
+  - id: join-14
+    query: "Films available at store 1 and their rental rate"
+    expected_tables: [inventory, film, store]
+  - id: join-15
+    query: "각 직원이 일하는 매장의 주소"
+    expected_tables: [staff, store, address]
+  - id: join-16
+    query: "Customers who have rented a specific film by title"
+    expected_tables: [rental, inventory, film, customer]
+  - id: join-17
+    query: "고객의 결제 내역과 결제를 처리한 직원 이름"
+    expected_tables: [payment, customer, staff]
+  - id: join-18
+    query: "각 영화의 언어 이름"
+    expected_tables: [film, language]
+  - id: join-19
+    query: "City and country for every store location"
+    expected_tables: [store, address, city, country]
+  - id: join-20
+    query: "한 번도 빌리지 않은 고객 수"
+    expected_tables: [customer, rental]
+
+  # ----- Simple filter / single-table (10) ----------------------------------
+  - id: filter-21
+    query: "Active 상태가 아닌 고객 목록"
+    expected_tables: [customer]
+  - id: filter-22
+    query: "Films released in 2006"
+    expected_tables: [film]
+  - id: filter-23
+    query: "이름이 'JOHN'인 배우 찾기"
+    expected_tables: [actor]
+  - id: filter-24
+    query: "PG-13 rating 영화 목록"
+    expected_tables: [film]
+  - id: filter-25
+    query: "Addresses in the city of Tokyo"
+    expected_tables: [address, city]
+  - id: filter-26
+    query: "반납되지 않은 대여 건수"
+    expected_tables: [rental]
+  - id: filter-27
+    query: "$5 이상 결제 내역"
+    expected_tables: [payment]
+  - id: filter-28
+    query: "List of all film categories"
+    expected_tables: [category]
+  - id: filter-29
+    query: "영어가 아닌 다른 언어로 제작된 영화"
+    expected_tables: [film, language]
+  - id: filter-30
+    query: "Inventory items at store 2"
+    expected_tables: [inventory, store]

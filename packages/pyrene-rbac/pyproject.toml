@@ -1,0 +1,28 @@
+[project]
+name = "pyrene-rbac"
+version = "0.1.0"
+description = "Pyrene Phase 2: Tool-level RBAC (Role x Tool matrix) — PRD-010 / PLAN-010"
+requires-python = ">=3.13"
+dependencies = [
+    "pyrene-core",
+    "pyrene-auth",
+    "pyrene-gateway",
+    "pydantic>=2.7",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "fastapi>=0.111",
+    "cachetools>=5.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyrene_rbac"]
+
+[tool.uv.sources]
+pyrene-core = { workspace = true }
+pyrene-auth = { workspace = true }
+pyrene-gateway = { workspace = true }

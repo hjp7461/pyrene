@@ -1,0 +1,60 @@
+[project]
+name = "pyrene-dashboard"
+version = "0.1.0"
+description = "Streamlit admin dashboard for Pyrene control plane"
+requires-python = ">=3.13"
+dependencies = [
+    "streamlit>=1.36",
+    "httpx>=0.27",
+    "cachetools>=5.3",
+    "pendulum>=3.0",
+]
+
+[project.scripts]
+pyrene-dashboard = "pyrene_dashboard.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyrene_dashboard"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+disallow_untyped_decorators = true
+no_implicit_reexport = true
+explicit_package_bases = true
+namespace_packages = true
+# Streamlit, httpx, pandas, pendulum ship partial stubs; ignore missing imports.
+[[tool.mypy.overrides]]
+module = [
+    "streamlit",
+    "streamlit.*",
+    "streamlit.testing.*",
+    "streamlit.testing.v1",
+    "cachetools",
+    "pandas",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+# Dashboard test files use heavy mocking; relax strict checks.
+[[tool.mypy.overrides]]
+module = ["tests.*", "tests"]
+disallow_untyped_decorators = false
+warn_return_any = false
+warn_unused_ignores = false
+ignore_missing_imports = true
+
+# Streamlit pages are inherently dynamic (API dicts + widget calls).
+# Relax strict checks for page modules — they cannot be fully typed
+# without stubs for all st.* return types.
+[[tool.mypy.overrides]]
+module = ["pyrene_dashboard.pages.*"]
+disallow_untyped_decorators = false
+warn_return_any = false
+warn_unused_ignores = false

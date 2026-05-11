@@ -1,0 +1,82 @@
+{
+  "A-001": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-002": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-003": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-004": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-005": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-006": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-007": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-008": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-009": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-010": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-011": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-012": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-013": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-014": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-015": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-016": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-017": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-018": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-019": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "A-020": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  }
+}

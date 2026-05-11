@@ -1,0 +1,87 @@
+# Dataset B — performance (10 cases). PLAN-005 §2.
+#
+# Goal: measure retry behavior and attempt counts under near-typo / nearly
+# ambiguous prompts. KeywordJudge here checks confidence + the presence of
+# a successful SQL response (refusal=false). A "passing" case is one where
+# the agent ultimately recovered (mocked recordings simulate self-correction
+# with attempts.length=2 for retry cases).
+#
+# Distribution:
+#   - Retry-rate cases (5): questions that include a typo'd column / table
+#     name that the model is expected to fix on the second attempt
+#     (PRD-003 §2.1 S1). Recordings include a 2-attempt trace.
+#   - Single-attempt happy path (5): questions that should resolve on the
+#     first attempt (recordings have attempts.length=1).
+
+cases:
+  # ----- Retry-rate (5) -----------------------------------------------------
+  - id: B-001
+    question: "films 테이블에서 title 5개"  # 'films' → typo, should self-correct
+    category: performance
+    expected_sql_keywords: ["SELECT", "title", "film"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: B-002
+    question: "categories 의 이름 모두"  # 'categories' → 'category'
+    category: performance
+    expected_sql_keywords: ["SELECT", "category"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: B-003
+    question: "rental_dat 컬럼 기준 정렬해서 rental 5개"  # 'rental_dat' → 'rental_date'
+    category: performance
+    expected_sql_keywords: ["rental", "rental_date", "ORDER BY"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: B-004
+    question: "actor 의 firstname 5명"  # 'firstname' → 'first_name'
+    category: performance
+    expected_sql_keywords: ["actor", "first_name"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  - id: B-005
+    question: "payment 테이블의 amount_total 합"  # 'amount_total' → 'amount'
+    category: performance
+    expected_sql_keywords: ["payment", "amount", "SUM"]
+    expected_confidence: medium
+    expected_refusal: false
+
+  # ----- Single-attempt happy path (5) --------------------------------------
+  - id: B-006
+    question: "language 테이블 행 수"
+    category: performance
+    expected_sql_keywords: ["language", "COUNT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: B-007
+    question: "store 테이블 모든 store_id"
+    category: performance
+    expected_sql_keywords: ["SELECT", "store_id", "store"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: B-008
+    question: "actor 테이블 actor_id 1번 행"
+    category: performance
+    expected_sql_keywords: ["SELECT", "actor", "actor_id"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: B-009
+    question: "country 테이블에서 country 가 'Japan' 인 행"
+    category: performance
+    expected_sql_keywords: ["country", "Japan"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: B-010
+    question: "city 테이블 행 수"
+    category: performance
+    expected_sql_keywords: ["city", "COUNT"]
+    expected_confidence: high
+    expected_refusal: false

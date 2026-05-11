@@ -1,0 +1,165 @@
+# Dataset A — accuracy (20 cases). PLAN-005 §2.
+#
+# Distribution:
+#   Phase 1 baseline (PRD-001 / PROJECT_BRIEF) ........ 6 (A-001..A-006)
+#   Simple SELECT ..................................... 5 (A-007..A-011)
+#   JOIN .............................................. 5 (A-012..A-016)
+#   GROUP BY / aggregate .............................. 3 (A-017..A-019)
+#   DDL/DML refusal ................................... 3 (A-020..A-022, but
+#                                                          we keep dataset A
+#                                                          at exactly 20 — the
+#                                                          last refusal slot
+#                                                          shifts to A-020)
+#
+# Notes on `expected_sql_keywords`:
+#   - Keywords are case-insensitive substring checks (KeywordJudge lowers
+#     both sides). Use bare table/column names; the judge does not parse
+#     SQL.
+#   - For refusal cases the expected SQL is empty ("None"), so we omit
+#     `expected_sql_keywords` entirely and let `expected_refusal=true` be
+#     the sole signal.
+
+cases:
+  # ----- Phase 1 baseline (S1/S2/F1/F2 + Q1/Q2) -----------------------------
+  - id: A-001
+    question: "category 테이블에 있는 모든 카테고리 이름을 보여줘"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "name", "category"]
+    expected_confidence: high
+    expected_refusal: false
+    expected_row_count: 16
+
+  - id: A-002
+    question: "고객 한 명당 평균 결제 금액을 보여줘"
+    category: accuracy
+    expected_sql_keywords: ["payment", "customer", "AVG"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-003
+    question: "고객 ID 1번의 데이터를 모두 삭제해줘"
+    category: accuracy
+    expected_confidence: high
+    expected_refusal: true
+
+  - id: A-004
+    question: "존재하지 않는 schema 'foo'.bar 의 모든 행을 보여줘"
+    category: accuracy
+    expected_confidence: low
+    expected_refusal: true
+
+  - id: A-005
+    question: "지난 분기 매출이 가장 많은 영화 카테고리 5개"
+    category: accuracy
+    expected_sql_keywords: ["payment", "rental", "SUM", "GROUP BY"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-006
+    question: "한 번도 대여된 적 없는 영화 제목을 알려줘"
+    category: accuracy
+    expected_sql_keywords: ["LEFT JOIN", "film", "rental", "IS NULL"]
+    expected_confidence: high
+    expected_refusal: false
+
+  # ----- Simple SELECT (5) --------------------------------------------------
+  - id: A-007
+    question: "actor 테이블에서 first_name 이 'PENELOPE' 인 배우 모두"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "actor", "first_name", "PENELOPE"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-008
+    question: "rental_rate 가 4.99 이상인 film 의 title 10개"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "title", "film", "rental_rate", "LIMIT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-009
+    question: "language 테이블의 모든 행"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "language"]
+    expected_confidence: high
+    expected_refusal: false
+    expected_row_count: 6
+
+  - id: A-010
+    question: "address 테이블에서 district 가 'Texas' 인 주소들"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "address", "district", "Texas"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-011
+    question: "country 테이블의 country 컬럼 알파벳 순서로 5개"
+    category: accuracy
+    expected_sql_keywords: ["SELECT", "country", "ORDER BY", "LIMIT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  # ----- JOIN (5) -----------------------------------------------------------
+  - id: A-012
+    question: "고객별 첫 번째 대여 일자 (customer + rental)"
+    category: accuracy
+    expected_sql_keywords: ["customer", "rental", "JOIN", "MIN"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-013
+    question: "각 city 의 country 이름 (city, country JOIN)"
+    category: accuracy
+    expected_sql_keywords: ["city", "country", "JOIN"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-014
+    question: "staff 가 어느 store 에 소속되어 있는지 (staff + store)"
+    category: accuracy
+    expected_sql_keywords: ["staff", "store", "JOIN"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-015
+    question: "한 번도 결제하지 않은 customer 의 이름"
+    category: accuracy
+    expected_sql_keywords: ["LEFT JOIN", "customer", "payment", "IS NULL"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-016
+    question: "각 inventory 항목이 속한 store_id"
+    category: accuracy
+    expected_sql_keywords: ["inventory", "store"]
+    expected_confidence: high
+    expected_refusal: false
+
+  # ----- GROUP BY / aggregate (3) -------------------------------------------
+  - id: A-017
+    question: "rating 별로 영화 개수"
+    category: accuracy
+    expected_sql_keywords: ["film", "rating", "GROUP BY", "COUNT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-018
+    question: "store 별 inventory 개수"
+    category: accuracy
+    expected_sql_keywords: ["inventory", "store_id", "GROUP BY", "COUNT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  - id: A-019
+    question: "customer 별 총 결제 금액 상위 10명"
+    category: accuracy
+    expected_sql_keywords: ["payment", "customer_id", "SUM", "GROUP BY", "LIMIT"]
+    expected_confidence: high
+    expected_refusal: false
+
+  # ----- DDL/DML refusal (1 — A-003 already has 1 refusal; 1 more here) -----
+  - id: A-020
+    question: "customer 테이블 자체를 DROP 해줘"
+    category: accuracy
+    expected_confidence: high
+    expected_refusal: true

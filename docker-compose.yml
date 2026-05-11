@@ -1,0 +1,122 @@
+# docker-compose for Pyrene — PRD-018 / PLAN-018 Day 1 (Wave 10 finalize).
+#
+# Single `docker compose up -d` boots the full Phase 2 stack:
+#   - postgres        : pgvector/pg16, DVD Rental + auth/agents/rbac/audit/
+#                       metering/budget migrations applied on startup.
+#   - pyrene-api      : unified FastAPI app composed of auth + agents +
+#                       gateway + rbac + data-rbac + metering + audit +
+#                       budget + mcp-tools routers. Port 8000.
+#   - pyrene-dashboard: Streamlit dashboard (ADR-013 dual-role pool). 8501.
+#   - echo-mcp        : stub MCP echo server used by gateway integration
+#                       tests and scenario A/C end-to-end runs. 9000.
+#
+# The API container is built lazily — until PLAN-018 Day 1 wires the unified
+# FastAPI entrypoint into a top-level Dockerfile, `docker compose up` will
+# still bring postgres + dashboard up; the API service is gated behind the
+# `api` profile so that integrators who only need the data plane can run
+# `docker compose up -d postgres pyrene-dashboard` without pulling the API
+# image. Run `docker compose --profile api up -d` for the full stack.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pyrene-postgres
+    environment:
+      POSTGRES_USER: pyrene
+      POSTGRES_PASSWORD: pyrene
+      POSTGRES_DB: dvdrental
+    ports:
+      - "5433:5432"
+    volumes:
+      - pyrene_pg_data:/var/lib/postgresql/data
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyrene -d dvdrental"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  pyrene-api:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: deploy/api/Dockerfile
+    container_name: pyrene-api
+    environment:
+      PG_DSN: postgresql+asyncpg://pyrene:pyrene@postgres:5432/dvdrental
+      PG_READONLY_DSN: postgresql+asyncpg://pyrene_readonly:readonly@postgres:5432/dvdrental
+      JWT_SECRET: ${JWT_SECRET:-pyrene-dev-secret-change-me-with-at-least-thirty-two-bytes}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+      LOGFIRE_PROJECT_NAME: ${LOGFIRE_PROJECT_NAME:-pyrene}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MODEL_NAME: ${MODEL_NAME:-anthropic:claude-sonnet-4-6}
+      PYRENE_FS_ROOT: /tmp/pyrene-fs-root
+      ECHO_MCP_URL: http://echo-mcp:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; urllib.request.urlopen(\"http://localhost:8000/health\", timeout=2); sys.exit(0)' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  pyrene-dashboard:
+    build:
+      context: .
+      dockerfile: packages/pyrene-dashboard/Dockerfile
+    container_name: pyrene-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      PYRENE_API_URL: http://host.docker.internal:8000
+      LOGFIRE_URL: ${LOGFIRE_URL:-https://logfire.pydantic.dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8501/_stcore/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # Stub MCP echo server — exposed only to the integration test profile so
+  # that the gateway can exercise the full hook chain (BUDGET_PRE → RBAC →
+  # DATA_RBAC → tool → AUDIT → BUDGET_POST) without needing a real external
+  # MCP. Scenario C in `bin/demo.sh` uses the in-process FilesystemMcpTool
+  # by default, but the echo server is available for hop-counting demos.
+  echo-mcp:
+    profiles: ["api", "integration"]
+    image: python:3.13-slim
+    container_name: pyrene-echo-mcp
+    working_dir: /app
+    command:
+      - python
+      - -c
+      - |
+        import http.server, json, socketserver
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({"ok": True, "echo": self.path}).encode()
+                self.send_response(200); self.send_header("Content-Type","application/json"); self.end_headers(); self.wfile.write(body)
+            def log_message(self, *a): pass
+        with socketserver.TCPServer(("0.0.0.0", 9000), H) as s:
+            s.serve_forever()
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9000/health\", timeout=2)' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+volumes:
+  pyrene_pg_data:

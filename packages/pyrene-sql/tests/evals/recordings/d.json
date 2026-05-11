@@ -1,0 +1,93 @@
+{
+  "D-001": {
+    "sql": "SELECT * FROM public.actor WHERE first_name = 'Zzz'",
+    "rows": [],
+    "row_count": 0,
+    "truncated": false,
+    "analysis": "0 actors named 'Zzz'. The most-common first names in this dataset start with vowels — try a different prefix.",
+    "confidence": "low",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.actor WHERE first_name = 'Zzz'", "error": null, "duration_ms": 10}]
+  },
+  "D-002": {
+    "sql": "SELECT * FROM public.film WHERE rental_rate >= 99.99",
+    "rows": [],
+    "row_count": 0,
+    "truncated": false,
+    "analysis": "No film has rental_rate >= 99.99. Max rental_rate in this catalog is 4.99 — try a lower threshold.",
+    "confidence": "low",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.film WHERE rental_rate >= 99.99", "error": null, "duration_ms": 11}]
+  },
+  "D-003": {
+    "sql": "SELECT city FROM public.city WHERE city.country_id IN (SELECT country_id FROM public.country WHERE country = 'Atlantis')",
+    "rows": [],
+    "row_count": 0,
+    "truncated": false,
+    "analysis": "Atlantis is not in the country table. The catalog covers real-world countries only.",
+    "confidence": "low",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT city FROM city WHERE country = 'Atlantis'", "error": null, "duration_ms": 14}]
+  },
+  "D-004": {
+    "sql": "SELECT title, rental_rate FROM public.film ORDER BY rental_rate DESC LIMIT 10",
+    "rows": [{"title": "ACADEMY DINOSAUR", "rental_rate": 4.99}],
+    "row_count": 10,
+    "truncated": false,
+    "analysis": "Assumption: 'top movies' = highest rental_rate. Switch to a different metric (rental count, revenue) if needed.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT title FROM film ORDER BY rental_rate DESC LIMIT 10", "error": null, "duration_ms": 12}]
+  },
+  "D-005": {
+    "sql": "SELECT customer_id, SUM(amount) AS total FROM public.payment GROUP BY customer_id ORDER BY total DESC LIMIT 10",
+    "rows": [{"customer_id": 526, "total": 221.55}],
+    "row_count": 10,
+    "truncated": false,
+    "analysis": "Assumption: 'best customers' = highest total payments. Top 10 by total spend returned.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT customer_id, SUM(amount) FROM payment GROUP BY customer_id ORDER BY 2 DESC LIMIT 10", "error": null, "duration_ms": 18}]
+  },
+  "D-006": {
+    "sql": "SELECT category.name, COUNT(*) AS rentals FROM public.category INNER JOIN public.film_category ON category.category_id = film_category.category_id GROUP BY category.name ORDER BY rentals DESC LIMIT 5",
+    "rows": [{"name": "Sports", "rentals": 74}],
+    "row_count": 5,
+    "truncated": false,
+    "analysis": "Assumption: '인기' = 카테고리에 속한 영화 개수. 다른 정의(대여 횟수, 매출)로 보고 싶으시면 알려주세요.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT category.name, COUNT(*) FROM category JOIN film_category ON ... GROUP BY category.name ORDER BY 2 DESC LIMIT 5", "error": null, "duration_ms": 22}]
+  },
+  "D-007": {
+    "sql": "SELECT first_name, last_name FROM public.actor ORDER BY actor_id ASC LIMIT 10",
+    "rows": [{"first_name": "PENELOPE", "last_name": "GUINESS"}],
+    "row_count": 10,
+    "truncated": false,
+    "analysis": "Assumption: '오래된 actor' = actor_id 가 작은 (먼저 등록된) 배우. 생년월일 정보는 actor 테이블에 없습니다.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT first_name, last_name FROM actor ORDER BY actor_id LIMIT 10", "error": null, "duration_ms": 9}]
+  },
+  "D-008": {
+    "sql": null, "rows": null, "row_count": null, "truncated": false,
+    "analysis": "",
+    "confidence": "low",
+    "refusal": "이 데이터베이스는 DVD Rental 도메인입니다. 환자 진료 기록을 담은 테이블은 없어요. 영화 대여 / 결제 / 고객 관련 질문이라면 도와드릴 수 있습니다.",
+    "attempts": [{"sql": null, "error": null, "duration_ms": 3}]
+  },
+  "D-009": {
+    "sql": null, "rows": null, "row_count": null, "truncated": false,
+    "analysis": "",
+    "confidence": "low",
+    "refusal": "날씨 정보는 SQL 데이터베이스 질문이 아닙니다. 외부 날씨 API 를 사용해 주세요.",
+    "attempts": [{"sql": null, "error": null, "duration_ms": 3}]
+  },
+  "D-010": {
+    "sql": null, "rows": null, "row_count": null, "truncated": false,
+    "analysis": "",
+    "confidence": "low",
+    "refusal": "이 데이터베이스에는 회사 회계 원장이 없습니다. payment 테이블의 매출 합계는 보여드릴 수 있어요.",
+    "attempts": [{"sql": null, "error": null, "duration_ms": 3}]
+  }
+}

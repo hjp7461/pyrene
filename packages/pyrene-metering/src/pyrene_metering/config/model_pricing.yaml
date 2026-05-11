@@ -1,0 +1,26 @@
+# Pyrene model pricing (PRD-013).
+#
+# USD per 1M tokens (input / output / cache-read / cache-write).
+# Values are Phase 2 stubs — operators replace with vendor-specific
+# numbers via `POST /admin/pricing/reload` (Day 2).
+#
+# Cache rates default to 0 when omitted; cache_read is typically
+# ~10% of input rate and cache_write ~125% of input on Anthropic
+# (placeholders below). Adjust to vendor published rates before
+# production cutover.
+
+- model: anthropic:claude-sonnet-4-6
+  input_per_mtok: 3.00
+  output_per_mtok: 15.00
+  cache_read_per_mtok: 0.30
+  cache_write_per_mtok: 3.75
+
+- model: anthropic:claude-opus-4-7
+  input_per_mtok: 15.00
+  output_per_mtok: 75.00
+  cache_read_per_mtok: 1.50
+  cache_write_per_mtok: 18.75
+
+- model: openai:gpt-5
+  input_per_mtok: 5.00
+  output_per_mtok: 15.00

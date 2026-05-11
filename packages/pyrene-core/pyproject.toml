@@ -1,0 +1,24 @@
+[project]
+name = "pyrene-core"
+version = "0.1.0"
+description = "Pyrene shared abstractions: BaseModel base, UserContext, common types"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.7",
+    # PRD-006 / PLAN-006 — observability is shared across packages so the
+    # configure helper lives in core. Logfire vendors its own OTel SDK.
+    "logfire>=4.0",
+    "opentelemetry-sdk>=1.27",
+    # SQLAlchemy instrumentation isn't strictly needed by core, but the
+    # `instrument_sqlalchemy` helper inside `logfire_setup` calls into
+    # opentelemetry-instrumentation-sqlalchemy. Pin it here so a fresh
+    # `uv sync` populates the wheel; pyrene-sql is the actual user.
+    "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyrene_core"]

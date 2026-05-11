@@ -1,0 +1,225 @@
+{
+  "A-001": {
+    "sql": "SELECT name FROM public.category",
+    "rows": [{"name": "Action"}, {"name": "Animation"}, {"name": "Children"}],
+    "row_count": 16,
+    "truncated": false,
+    "analysis": "16 categories returned alphabetically. No skew — each category is a distinct row.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT name FROM public.category", "error": null, "duration_ms": 12}
+    ]
+  },
+  "A-002": {
+    "sql": "SELECT customer_id, AVG(amount) AS avg_amount FROM public.payment GROUP BY customer_id",
+    "rows": [{"customer_id": 1, "avg_amount": 4.32}, {"customer_id": 2, "avg_amount": 4.78}],
+    "row_count": 599,
+    "truncated": false,
+    "analysis": "Average payment per customer ranges roughly 3-5 USD. Distribution is tight; no outliers.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT customer_id, AVG(amount) FROM public.payment GROUP BY customer_id", "error": null, "duration_ms": 22}
+    ]
+  },
+  "A-003": {
+    "sql": null,
+    "rows": null,
+    "row_count": null,
+    "truncated": false,
+    "analysis": "",
+    "confidence": "high",
+    "refusal": "이 시스템은 읽기 전용입니다. 삭제 작업은 지원하지 않습니다. 대신 customer_id=1의 데이터를 조회해 보시겠어요?",
+    "attempts": [
+      {"sql": null, "error": null, "duration_ms": 3}
+    ]
+  },
+  "A-004": {
+    "sql": null,
+    "rows": null,
+    "row_count": null,
+    "truncated": false,
+    "analysis": "",
+    "confidence": "low",
+    "refusal": "schema 'foo' 가 데이터베이스에 존재하지 않습니다. 사용 가능한 테이블 목록을 먼저 확인해 주세요.",
+    "attempts": [
+      {"sql": "SELECT * FROM foo.bar", "error": "relation 'foo.bar' does not exist", "duration_ms": 8},
+      {"sql": "SELECT * FROM foo.bar", "error": "relation 'foo.bar' does not exist", "duration_ms": 8},
+      {"sql": "SELECT * FROM foo.bar", "error": "relation 'foo.bar' does not exist", "duration_ms": 8}
+    ]
+  },
+  "A-005": {
+    "sql": "SELECT category.name, SUM(payment.amount) AS revenue FROM public.payment INNER JOIN public.rental ON payment.rental_id = rental.rental_id GROUP BY category.name ORDER BY revenue DESC LIMIT 5",
+    "rows": [
+      {"name": "Sports", "revenue": 5314.21},
+      {"name": "Sci-Fi", "revenue": 4756.78}
+    ],
+    "row_count": 5,
+    "truncated": false,
+    "analysis": "Top 5 categories by revenue. Sports leads by ~12%; long-tail categories cluster within 10% of each other (low skew below the top).",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT ... GROUP BY category.name", "error": null, "duration_ms": 89}
+    ]
+  },
+  "A-006": {
+    "sql": "SELECT film.title FROM public.film LEFT JOIN public.rental ON film.film_id = rental.inventory_id WHERE rental.rental_id IS NULL",
+    "rows": [{"title": "ALICE FANTASIA"}, {"title": "APOLLO TEEN"}],
+    "row_count": 42,
+    "truncated": false,
+    "analysis": "Phase-1 single-JOIN approximation: films without a rental row via the LEFT JOIN + IS NULL pattern. A second JOIN through inventory would be more precise; flagged as a known simplification.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT film.title FROM film LEFT JOIN rental ON ... WHERE rental.rental_id IS NULL", "error": null, "duration_ms": 34}
+    ]
+  },
+  "A-007": {
+    "sql": "SELECT * FROM public.actor WHERE first_name = 'PENELOPE'",
+    "rows": [{"actor_id": 1, "first_name": "PENELOPE", "last_name": "GUINESS"}],
+    "row_count": 4,
+    "truncated": false,
+    "analysis": "4 actors named PENELOPE in the catalog.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.actor WHERE first_name = :p", "error": null, "duration_ms": 11}]
+  },
+  "A-008": {
+    "sql": "SELECT title FROM public.film WHERE rental_rate >= 4.99 LIMIT 10",
+    "rows": [{"title": "ACADEMY DINOSAUR"}],
+    "row_count": 10,
+    "truncated": true,
+    "analysis": "10 of 336 matching films returned (truncated by LIMIT).",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT title FROM film WHERE rental_rate >= 4.99 LIMIT 10", "error": null, "duration_ms": 14}]
+  },
+  "A-009": {
+    "sql": "SELECT * FROM public.language",
+    "rows": [{"language_id": 1, "name": "English"}],
+    "row_count": 6,
+    "truncated": false,
+    "analysis": "All 6 languages returned.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.language", "error": null, "duration_ms": 8}]
+  },
+  "A-010": {
+    "sql": "SELECT * FROM public.address WHERE district = 'Texas'",
+    "rows": [{"address_id": 5, "district": "Texas"}],
+    "row_count": 13,
+    "truncated": false,
+    "analysis": "13 Texas addresses on file.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM address WHERE district = 'Texas'", "error": null, "duration_ms": 10}]
+  },
+  "A-011": {
+    "sql": "SELECT country FROM public.country ORDER BY country ASC LIMIT 5",
+    "rows": [
+      {"country": "Afghanistan"},
+      {"country": "Algeria"},
+      {"country": "American Samoa"},
+      {"country": "Angola"},
+      {"country": "Anguilla"}
+    ],
+    "row_count": 5,
+    "truncated": false,
+    "analysis": "First 5 countries alphabetically.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT country FROM country ORDER BY country LIMIT 5", "error": null, "duration_ms": 9}]
+  },
+  "A-012": {
+    "sql": "SELECT customer.customer_id, MIN(rental.rental_date) AS first_rental FROM public.customer INNER JOIN public.rental ON customer.customer_id = rental.customer_id GROUP BY customer.customer_id",
+    "rows": [{"customer_id": 1, "first_rental": "2005-05-25"}],
+    "row_count": 599,
+    "truncated": false,
+    "analysis": "599 customers with their first rental date. Earliest rentals cluster around 2005-05.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT ... INNER JOIN ... GROUP BY customer_id", "error": null, "duration_ms": 41}]
+  },
+  "A-013": {
+    "sql": "SELECT city.city, country.country FROM public.city INNER JOIN public.country ON city.country_id = country.country_id",
+    "rows": [{"city": "Tokyo", "country": "Japan"}],
+    "row_count": 600,
+    "truncated": false,
+    "analysis": "600 city-country pairs. Each city resolves to exactly one country via FK.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT city.city, country.country FROM city JOIN country ON city.country_id = country.country_id", "error": null, "duration_ms": 18}]
+  },
+  "A-014": {
+    "sql": "SELECT staff.staff_id, store.store_id FROM public.staff INNER JOIN public.store ON staff.store_id = store.store_id",
+    "rows": [{"staff_id": 1, "store_id": 1}, {"staff_id": 2, "store_id": 2}],
+    "row_count": 2,
+    "truncated": false,
+    "analysis": "2 staff records, each in a distinct store.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT staff.staff_id, store.store_id FROM staff JOIN store ON staff.store_id = store.store_id", "error": null, "duration_ms": 12}]
+  },
+  "A-015": {
+    "sql": "SELECT customer.first_name, customer.last_name FROM public.customer LEFT JOIN public.payment ON customer.customer_id = payment.customer_id WHERE payment.payment_id IS NULL",
+    "rows": [],
+    "row_count": 0,
+    "truncated": false,
+    "analysis": "No customers without payments — every customer in the dataset has at least one payment record.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT ... LEFT JOIN payment WHERE payment.payment_id IS NULL", "error": null, "duration_ms": 22}]
+  },
+  "A-016": {
+    "sql": "SELECT inventory_id, store_id FROM public.inventory",
+    "rows": [{"inventory_id": 1, "store_id": 1}],
+    "row_count": 4581,
+    "truncated": true,
+    "analysis": "4581 inventory rows across the 2 stores. Store 1 holds slightly more than store 2.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT inventory_id, store_id FROM inventory", "error": null, "duration_ms": 28}]
+  },
+  "A-017": {
+    "sql": "SELECT rating, COUNT(*) AS cnt FROM public.film GROUP BY rating",
+    "rows": [{"rating": "G", "cnt": 178}, {"rating": "PG", "cnt": 194}],
+    "row_count": 5,
+    "truncated": false,
+    "analysis": "5 MPAA ratings; PG-13 has the highest film count and NC-17 the lowest. Distribution is roughly uniform.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT rating, COUNT(*) FROM film GROUP BY rating", "error": null, "duration_ms": 13}]
+  },
+  "A-018": {
+    "sql": "SELECT store_id, COUNT(*) AS cnt FROM public.inventory GROUP BY store_id",
+    "rows": [{"store_id": 1, "cnt": 2270}, {"store_id": 2, "cnt": 2311}],
+    "row_count": 2,
+    "truncated": false,
+    "analysis": "Store 2 holds 41 more inventory items than store 1 (~2% skew).",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT store_id, COUNT(*) FROM inventory GROUP BY store_id", "error": null, "duration_ms": 11}]
+  },
+  "A-019": {
+    "sql": "SELECT customer_id, SUM(amount) AS total FROM public.payment GROUP BY customer_id ORDER BY total DESC LIMIT 10",
+    "rows": [{"customer_id": 526, "total": 221.55}],
+    "row_count": 10,
+    "truncated": false,
+    "analysis": "Top 10 customers by total payments. Top spender (526) is ~25% above the 10th-rank customer.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT customer_id, SUM(amount) FROM payment GROUP BY customer_id ORDER BY 2 DESC LIMIT 10", "error": null, "duration_ms": 20}]
+  },
+  "A-020": {
+    "sql": null,
+    "rows": null,
+    "row_count": null,
+    "truncated": false,
+    "analysis": "",
+    "confidence": "high",
+    "refusal": "DROP TABLE 같은 DDL 요청은 읽기 전용 시스템에서 거부됩니다. customer 테이블의 행 수를 알고 싶으시면 'customer 테이블 행 수'로 다시 물어주세요.",
+    "attempts": [{"sql": null, "error": null, "duration_ms": 2}]
+  }
+}

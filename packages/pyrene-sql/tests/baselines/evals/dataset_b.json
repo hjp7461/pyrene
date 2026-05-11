@@ -1,0 +1,42 @@
+{
+  "B-001": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-002": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-003": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-004": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-005": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-006": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-007": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-008": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-009": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "B-010": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  }
+}

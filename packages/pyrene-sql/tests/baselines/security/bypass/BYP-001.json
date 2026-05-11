@@ -1,0 +1,7 @@
+{
+  "case_id": "BYP-001",
+  "expected_passed": true,
+  "expected_blocked": true,
+  "expected_audit_count": 1,
+  "response_text_sha256": "18c10cfbc8decd23729b4ff37a26bfd0922c4d79e3ad56248079c92b1cb0999a"
+}

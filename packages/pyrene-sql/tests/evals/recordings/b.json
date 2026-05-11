@@ -1,0 +1,117 @@
+{
+  "B-001": {
+    "sql": "SELECT title FROM public.film LIMIT 5",
+    "rows": [{"title": "ACADEMY DINOSAUR"}],
+    "row_count": 5,
+    "truncated": true,
+    "analysis": "Assumption: 'films' resolved to 'film' on retry. 5 of 1000 films returned.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT title FROM public.films LIMIT 5", "error": "relation 'public.films' does not exist", "duration_ms": 12},
+      {"sql": "SELECT title FROM public.film LIMIT 5", "error": null, "duration_ms": 14}
+    ]
+  },
+  "B-002": {
+    "sql": "SELECT name FROM public.category",
+    "rows": [{"name": "Action"}],
+    "row_count": 16,
+    "truncated": false,
+    "analysis": "Assumption: 'categories' resolved to 'category' on retry. All 16 categories returned.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT name FROM public.categories", "error": "relation 'public.categories' does not exist", "duration_ms": 11},
+      {"sql": "SELECT name FROM public.category", "error": null, "duration_ms": 9}
+    ]
+  },
+  "B-003": {
+    "sql": "SELECT * FROM public.rental ORDER BY rental_date DESC LIMIT 5",
+    "rows": [{"rental_id": 16049, "rental_date": "2005-08-23"}],
+    "row_count": 5,
+    "truncated": true,
+    "analysis": "Assumption: 'rental_dat' resolved to 'rental_date' on retry. 5 most recent rentals returned.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT * FROM public.rental ORDER BY rental_dat DESC LIMIT 5", "error": "column 'rental_dat' does not exist", "duration_ms": 13},
+      {"sql": "SELECT * FROM public.rental ORDER BY rental_date DESC LIMIT 5", "error": null, "duration_ms": 17}
+    ]
+  },
+  "B-004": {
+    "sql": "SELECT first_name FROM public.actor LIMIT 5",
+    "rows": [{"first_name": "PENELOPE"}],
+    "row_count": 5,
+    "truncated": true,
+    "analysis": "Assumption: 'firstname' resolved to 'first_name'. 5 of 200 actors returned.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT firstname FROM public.actor LIMIT 5", "error": "column 'firstname' does not exist", "duration_ms": 10},
+      {"sql": "SELECT first_name FROM public.actor LIMIT 5", "error": null, "duration_ms": 8}
+    ]
+  },
+  "B-005": {
+    "sql": "SELECT SUM(amount) AS total FROM public.payment",
+    "rows": [{"total": 67416.51}],
+    "row_count": 1,
+    "truncated": false,
+    "analysis": "Assumption: 'amount_total' resolved to SUM(amount). Total payments: ~67k USD.",
+    "confidence": "medium",
+    "refusal": null,
+    "attempts": [
+      {"sql": "SELECT SUM(amount_total) FROM public.payment", "error": "column 'amount_total' does not exist", "duration_ms": 11},
+      {"sql": "SELECT SUM(amount) FROM public.payment", "error": null, "duration_ms": 12}
+    ]
+  },
+  "B-006": {
+    "sql": "SELECT COUNT(*) AS cnt FROM public.language",
+    "rows": [{"cnt": 6}],
+    "row_count": 1,
+    "truncated": false,
+    "analysis": "6 languages.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT COUNT(*) FROM public.language", "error": null, "duration_ms": 7}]
+  },
+  "B-007": {
+    "sql": "SELECT store_id FROM public.store",
+    "rows": [{"store_id": 1}, {"store_id": 2}],
+    "row_count": 2,
+    "truncated": false,
+    "analysis": "2 stores: ids 1 and 2.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT store_id FROM public.store", "error": null, "duration_ms": 6}]
+  },
+  "B-008": {
+    "sql": "SELECT * FROM public.actor WHERE actor_id = 1",
+    "rows": [{"actor_id": 1, "first_name": "PENELOPE", "last_name": "GUINESS"}],
+    "row_count": 1,
+    "truncated": false,
+    "analysis": "Single actor row for actor_id=1: PENELOPE GUINESS.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.actor WHERE actor_id = 1", "error": null, "duration_ms": 8}]
+  },
+  "B-009": {
+    "sql": "SELECT * FROM public.country WHERE country = 'Japan'",
+    "rows": [{"country_id": 50, "country": "Japan"}],
+    "row_count": 1,
+    "truncated": false,
+    "analysis": "Japan is country_id=50.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT * FROM public.country WHERE country = 'Japan'", "error": null, "duration_ms": 7}]
+  },
+  "B-010": {
+    "sql": "SELECT COUNT(*) AS cnt FROM public.city",
+    "rows": [{"cnt": 600}],
+    "row_count": 1,
+    "truncated": false,
+    "analysis": "600 cities.",
+    "confidence": "high",
+    "refusal": null,
+    "attempts": [{"sql": "SELECT COUNT(*) FROM public.city", "error": null, "duration_ms": 8}]
+  }
+}

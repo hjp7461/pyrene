@@ -1,0 +1,42 @@
+{
+  "C-001": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-002": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-003": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-004": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-005": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-006": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-007": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-008": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-009": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  },
+  "C-010": {
+    "expected_pass": true,
+    "expected_score": 1.0
+  }
+}
