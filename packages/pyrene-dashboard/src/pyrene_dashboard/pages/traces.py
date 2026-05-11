@@ -25,23 +25,47 @@ st.title("Live Traces")
 
 token = auth.require_admin()
 
-_LOGFIRE_URL = os.environ.get("LOGFIRE_URL", "https://logfire.pydantic.dev")
+_LOGFIRE_DEFAULT = "https://logfire.pydantic.dev"
+_LOGFIRE_URL = os.environ.get("LOGFIRE_URL", _LOGFIRE_DEFAULT)
+
+
+def _is_logfire_configured(url: str | None = None) -> bool:
+    """PRD-024 F-1/F-2: LOGFIRE_URL 이 사용자 자기 trace 로 설정됐는지 판정.
+
+    Heuristic: env var 미설정 또는 Logfire 홈/login 기본값과 동일 (trailing
+    slash 변형 포함) 이면 미연동. 완전한 404/login 검출은 cross-origin
+    iframe sandbox 로 측정 불가 — ADR-017 참조.
+    """
+    candidate = (url if url is not None else _LOGFIRE_URL).strip()
+    if not candidate:
+        return False
+    return candidate.rstrip("/") != _LOGFIRE_DEFAULT
+
+
+_LOGFIRE_CONFIGURED = _is_logfire_configured()
 
 
 # ---------------------------------------------------------------------------
 # Primary: Logfire iframe (may be blocked by CSP in some environments)
 # ---------------------------------------------------------------------------
 
-st.subheader("Logfire Dashboard")
-st.caption(
-    "If the embed below is blocked by Content Security Policy, "
-    "use the fallback section below to view recent trace metadata."
-)
-
-try:
-    components.iframe(_LOGFIRE_URL, height=600, scrolling=True)
-except Exception as exc:
-    st.warning(f"iframe could not be rendered: {exc}")
+if _LOGFIRE_CONFIGURED:
+    st.subheader("Logfire Dashboard")
+    st.caption(
+        "If the embed below is blocked by Content Security Policy, "
+        "use the fallback section below to view recent trace metadata."
+    )
+    try:
+        components.iframe(_LOGFIRE_URL, height=600, scrolling=True)
+    except Exception as exc:
+        st.warning(f"iframe could not be rendered: {exc}")
+else:
+    st.info(
+        "Logfire 미연동 — 환경변수 `LOGFIRE_URL` 을 사용자 프로젝트 trace URL "
+        "로 설정하면 임베드된 대시보드와 직접 링크가 활성화됩니다.\n\n"
+        "아래 *Recent Traces (fallback)* 영역의 audit event 목록은 연동 여부와 "
+        "무관하게 사용 가능합니다."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -55,9 +79,10 @@ def _render_trace_fallback() -> None:
     st.divider()
     st.subheader("Recent Traces (fallback)")
 
-    col_btn, _col_spacer = st.columns([1, 3])
-    with col_btn:
-        st.link_button("Open in Logfire", _LOGFIRE_URL, use_container_width=True)
+    if _LOGFIRE_CONFIGURED:
+        col_btn, _col_spacer = st.columns([1, 3])
+        with col_btn:
+            st.link_button("Open in Logfire", _LOGFIRE_URL, use_container_width=True)
 
     try:
         with st.spinner("최신 데이터 동기화 중…", show_time=False):
