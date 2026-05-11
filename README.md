@@ -13,8 +13,8 @@ LangSmith / Portkey / Helicone / Langfuse 카테고리에서, *셀프호스트�
 | 항목 | 값 |
 |------|---|
 | 워크스페이스 패키지 | **12** (`packages/*`) |
-| 자동화 테스트 | **797** (`pytest --collect-only` · 794 active + 3 live-marker skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 243 source files) |
+| 자동화 테스트 | **818** (`pytest --collect-only` · 815 active + 3 live-marker skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 246 source files) |
 | 마이그레이션 | Alembic **0001 → 0008** (단일 chain) |
 | 아키텍처 결정 기록 (ADR) | **9건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
@@ -122,7 +122,7 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 ```bash
 uv sync                              # 의존성 설치 (12 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (797개)
+uv run pytest packages -q            # 전체 테스트 (818개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
@@ -182,7 +182,7 @@ uv run pyrene-auth init-admin
 ## 테스트 / 검증
 
 ```bash
-uv run pytest packages -q                                        # 전체 (797건 — 794 active + 3 live skip)
+uv run pytest packages -q                                        # 전체 (818건 — 815 active + 3 live skip)
 uv run pytest packages/pyrene-sql/tests/evals -q                 # Pydantic Evals 데이터셋
 uv run pytest packages -m integration -q                         # testcontainers Postgres 통합
 uv run pytest packages/pyrene-budget/tests/evals -q              # 보안 evals — 예산 우회 / advisory lock
