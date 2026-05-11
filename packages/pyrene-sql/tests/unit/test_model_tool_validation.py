@@ -41,7 +41,6 @@ async def test_unexpected_model_behavior_wrapped_and_retried(
     두번째 호출은 정상 AnalystResponse를 반환하도록 한다.
     """
     from pyrene_core import Confidence
-
     from pyrene_sql.agent import AnalystResponse, sql_analyst
 
     calls = {"n": 0}
