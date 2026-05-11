@@ -92,9 +92,14 @@ async def test_top_k_emits_cosine_distance_order_by() -> None:
     # The retriever embedded the query exactly once with the user text.
     assert embedder.calls == [["monthly revenue"]]
 
-    # Exactly one DB hit, with the cosine operator and a numeric `k` bind.
-    assert len(session.executed) == 1
-    sql, params = session.executed[0]
+    # PRD-021: retriever now also emits `SET LOCAL hnsw.ef_search = 100` to
+    # tame HNSW approximate ANN before the SELECT. Filter to the SELECT call
+    # for the cosine/order/limit checks.
+    select_calls = [
+        (sql, params) for sql, params in session.executed if "<=>" in sql
+    ]
+    assert len(select_calls) == 1
+    sql, params = select_calls[0]
     assert "<=>" in sql
     assert "ORDER BY embedding" in sql
     assert "LIMIT :k" in sql
@@ -125,7 +130,11 @@ async def test_top_k_respects_custom_connection_id() -> None:
 
     await retriever.top_k("query", k=3, connection_id=other_cid)
 
-    _, params = session.executed[0]
+    # PRD-021: SET LOCAL ef_search 호출이 앞서므로 SELECT 만 필터링.
+    select_calls = [
+        (sql, params) for sql, params in session.executed if "<=>" in sql
+    ]
+    _, params = select_calls[0]
     assert params["cid"] == other_cid
 
 
