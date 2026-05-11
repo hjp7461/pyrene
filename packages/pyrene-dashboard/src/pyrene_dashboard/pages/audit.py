@@ -16,7 +16,11 @@ import pandas as pd
 import streamlit as st
 
 from pyrene_dashboard import auth
-from pyrene_dashboard.api_client import fetch_audit_events, fetch_audit_timeline
+from pyrene_dashboard.api_client import (
+    fetch_audit_events,
+    fetch_audit_timeline,
+    friendly_error,
+)
 
 st.title("Audit Timeline")
 
@@ -78,7 +82,7 @@ def _render_audit() -> None:
         else:
             st.info("No timeline data available for the selected range.")
     except Exception as exc:
-        st.warning(f"Timeline unavailable: {exc}")
+        st.warning(friendly_error(exc, context="감사 타임라인"))
 
     st.divider()
 
@@ -96,7 +100,7 @@ def _render_audit() -> None:
             request_id=f_request_id.strip() or None,
         )
     except Exception as exc:
-        st.error(f"Failed to load audit events: {exc}")
+        st.error(friendly_error(exc, context="감사 이벤트"))
         return
 
     items: list[dict[str, Any]] = data.get("items", [])

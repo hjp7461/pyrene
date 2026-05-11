@@ -69,6 +69,65 @@ def _auth_headers(token: str) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Friendly error mapping (PRD-020 F-1, F-2)
+# ---------------------------------------------------------------------------
+
+_FRIENDLY_BY_TYPE: tuple[tuple[type[BaseException], str], ...] = (
+    (
+        httpx.ConnectError,
+        "서버에 연결할 수 없습니다 — 잠시 후 다시 시도하거나 관리자에게 문의하세요",
+    ),
+    (httpx.ReadTimeout, "서버 응답이 지연됩니다 — 잠시 후 다시 시도하세요"),
+    (httpx.WriteTimeout, "서버 응답이 지연됩니다 — 잠시 후 다시 시도하세요"),
+)
+
+_FRIENDLY_BY_STATUS: dict[int, str] = {
+    401: "인증이 만료되었습니다 — 로그아웃 후 다시 로그인하세요",
+    403: "접근 권한이 없습니다 — 관리자에게 권한 요청을 보내세요",
+    404: "해당 리소스를 찾을 수 없습니다 — 입력값을 확인하세요",
+}
+
+
+def friendly_error(exc: BaseException, context: str = "데이터") -> str:
+    """PRD-020: 영문 raw exception 을 사용자 언어 + 다음 행동 메시지로 매핑.
+
+    Args:
+        exc: 원본 예외.
+        context: 사용자 friendly 컨텍스트 ("RBAC 매트릭스", "감사 이벤트" 등).
+
+    Returns:
+        한국어 메시지. 원인 타입은 `(원인: ExcName)` 또는 `(HTTP {status})` 형태로
+        부분 노출 — 디버깅 친화 + 신뢰감 (PRD-020 Open Question Q1).
+    """
+    # 1) 타입 기반 매핑 (httpx 전송 계층)
+    for exc_type, message in _FRIENDLY_BY_TYPE:
+        if isinstance(exc, exc_type):
+            return (
+                f"{context}을(를) 불러올 수 없습니다 — {message} "
+                f"(원인: {type(exc).__name__})"
+            )
+
+    # 2) HTTP 상태 기반 매핑
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        if status in _FRIENDLY_BY_STATUS:
+            return f"{context}: {_FRIENDLY_BY_STATUS[status]} (HTTP {status})"
+        if 500 <= status < 600:
+            return (
+                f"{context}: 서버 오류가 발생했습니다 — 관리자에게 문의하세요 "
+                f"(HTTP {status})"
+            )
+        if 400 <= status < 500:
+            return (
+                f"{context}: 요청을 처리할 수 없습니다 — 입력값을 확인하세요 "
+                f"(HTTP {status})"
+            )
+
+    # 3) fallback
+    return f"{context}을(를) 불러올 수 없습니다 (원인: {type(exc).__name__})"
+
+
+# ---------------------------------------------------------------------------
 # /auth/me
 # ---------------------------------------------------------------------------
 

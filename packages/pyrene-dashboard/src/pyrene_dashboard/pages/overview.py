@@ -26,6 +26,7 @@ from pyrene_dashboard.api_client import (
     fetch_denials_last_hour,
     fetch_rbac_matrix,
     fetch_usage_summary,
+    friendly_error,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,7 +109,7 @@ def _render_data_tiles() -> None:
                         " See RBAC Matrix page for full view."
                     )
         except Exception as exc:
-            st.error(f"Failed to load RBAC matrix: {exc}")
+            st.error(friendly_error(exc, context="RBAC 매트릭스"))
 
     # ---- Tile 2: Denials in last 1h ----
     with tile2:
@@ -140,7 +141,7 @@ def _render_data_tiles() -> None:
             else:
                 st.success("No denials in the last hour.")
         except Exception as exc:
-            st.error(f"Failed to load denials: {exc}")
+            st.error(friendly_error(exc, context="거부 카운터"))
 
     # ---- Tile 3: Budget-blocked requests ----
     with tile3:
@@ -163,7 +164,7 @@ def _render_data_tiles() -> None:
             else:
                 st.caption("No blocked requests recorded.")
         except Exception as exc:
-            st.error(f"Failed to load budget-blocked data: {exc}")
+            st.error(friendly_error(exc, context="예산 차단 데이터"))
 
     # ---- Lower section ----
     st.divider()
@@ -187,7 +188,7 @@ def _render_data_tiles() -> None:
             else:
                 st.info("No usage data available.")
         except Exception as exc:
-            st.error(f"Failed to load usage summary: {exc}")
+            st.error(friendly_error(exc, context="사용량 요약"))
 
     with lower_right:
         st.subheader("Active Users")
@@ -202,7 +203,7 @@ def _render_data_tiles() -> None:
                     help="Total request count in the most recent day bucket",
                 )
         except Exception as exc:
-            st.error(f"Failed to load user count: {exc}")
+            st.error(friendly_error(exc, context="활성 사용자 수"))
 
 
 _render_data_tiles()

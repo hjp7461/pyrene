@@ -19,7 +19,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from pyrene_dashboard import auth
-from pyrene_dashboard.api_client import fetch_audit_events
+from pyrene_dashboard.api_client import fetch_audit_events, friendly_error
 
 st.title("Live Traces")
 
@@ -90,7 +90,7 @@ def _render_trace_fallback() -> None:
                 )
 
     except Exception as exc:
-        st.error(f"Failed to load trace data: {exc}")
+        st.error(friendly_error(exc, context="트레이스 데이터"))
 
     # Static screenshot placeholder
     st.caption("Last trace screenshot (static placeholder — replace with actual screenshot path):")
