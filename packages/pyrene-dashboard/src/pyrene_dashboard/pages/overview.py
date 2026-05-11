@@ -95,7 +95,8 @@ def _render_data_tiles() -> None:
     with tile1:
         st.subheader("RBAC Heatmap")
         try:
-            matrix = fetch_rbac_matrix(token)
+            with st.spinner("최신 데이터 동기화 중…", show_time=False):
+                matrix = fetch_rbac_matrix(token)
             heatmap_df = _build_heatmap_df(matrix)
             if heatmap_df.empty:
                 st.info("No RBAC matrix data available.")
@@ -115,7 +116,8 @@ def _render_data_tiles() -> None:
     with tile2:
         st.subheader("Denials — last 1h")
         try:
-            denial_data = fetch_denials_last_hour(token)
+            with st.spinner("최신 데이터 동기화 중…", show_time=False):
+                denial_data = fetch_denials_last_hour(token)
             denial_count: int = denial_data.get("count", 0)
             recent_denials: list[dict[str, Any]] = denial_data.get("recent", [])
 
@@ -147,7 +149,8 @@ def _render_data_tiles() -> None:
     with tile3:
         st.subheader("Budget-Blocked Requests")
         try:
-            blocked_data = fetch_budget_blocked(token)
+            with st.spinner("최신 데이터 동기화 중…", show_time=False):
+                blocked_data = fetch_budget_blocked(token)
             blocked_count: int = blocked_data.get("count", 0)
             trend: list[dict[str, Any]] = blocked_data.get("trend", [])
 
@@ -173,7 +176,8 @@ def _render_data_tiles() -> None:
     with lower_left:
         st.subheader("Daily Cost (USD)")
         try:
-            summaries = fetch_usage_summary(token, period="day")
+            with st.spinner("최신 데이터 동기화 중…", show_time=False):
+                summaries = fetch_usage_summary(token, period="day")
             if summaries:
                 cost_df = pd.DataFrame(
                     [
@@ -193,7 +197,8 @@ def _render_data_tiles() -> None:
     with lower_right:
         st.subheader("Active Users")
         try:
-            summaries = fetch_usage_summary(token, period="day")
+            with st.spinner("최신 데이터 동기화 중…", show_time=False):
+                summaries = fetch_usage_summary(token, period="day")
             if summaries and summaries:
                 latest = summaries[-1]
                 active_users: int = latest.get("request_count", 0)

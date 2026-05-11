@@ -48,7 +48,8 @@ def _render_rbac_matrix() -> None:
     """Fetch and display the full Role x Tool matrix."""
     st.subheader("Role x Tool Permissions")
     try:
-        matrix = fetch_rbac_matrix(token)
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            matrix = fetch_rbac_matrix(token)
         roles: list[dict[str, Any]] = matrix.get("roles", [])
         tools: list[str] = matrix.get("tools", [])
 
@@ -83,7 +84,8 @@ def _render_data_permissions() -> None:
     """Fetch and display data-level permissions (connection/schema/table)."""
     st.subheader("Data Permissions (Role x Connection / Schema / Table)")
     try:
-        data = fetch_data_permissions(token, size=100)
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            data = fetch_data_permissions(token, size=100)
         items: list[dict[str, Any]] = (
             data if isinstance(data, list) else data.get("items", [])
         )

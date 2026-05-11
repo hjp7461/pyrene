@@ -73,7 +73,8 @@ def _render_audit() -> None:
         ).to_iso8601_string()
 
     try:
-        timeline_data = fetch_audit_timeline(token, since=since_str)
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            timeline_data = fetch_audit_timeline(token, since=since_str)
         if timeline_data:
             timeline_df = pd.DataFrame(timeline_data)
             timeline_df["bucket"] = pd.to_datetime(timeline_df["bucket"], utc=True)
@@ -89,16 +90,17 @@ def _render_audit() -> None:
     # ---- Paginated event table ----
     st.subheader("Audit Events")
     try:
-        data = fetch_audit_events(
-            token,
-            page=int(audit_page_num),
-            size=int(f_page_size),
-            event_type=f_event_type.strip() or None,
-            user_id=f_user_id.strip() or None,
-            since=since_str,
-            scope=f_scope.strip() or None,
-            request_id=f_request_id.strip() or None,
-        )
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            data = fetch_audit_events(
+                token,
+                page=int(audit_page_num),
+                size=int(f_page_size),
+                event_type=f_event_type.strip() or None,
+                user_id=f_user_id.strip() or None,
+                since=since_str,
+                scope=f_scope.strip() or None,
+                request_id=f_request_id.strip() or None,
+            )
     except Exception as exc:
         st.error(friendly_error(exc, context="감사 이벤트"))
         return
