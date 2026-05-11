@@ -16,7 +16,7 @@ LangSmith / Portkey / Helicone / Langfuse 카테고리에서, *셀프호스트�
 | 자동화 테스트 | **797** (`pytest --collect-only` · 794 active + 3 live-marker skipped) |
 | 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 243 source files) |
 | 마이그레이션 | Alembic **0001 → 0008** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **8건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 등) |
+| 아키텍처 결정 기록 (ADR) | **9건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
