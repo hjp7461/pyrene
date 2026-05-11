@@ -85,12 +85,22 @@ class PgvectorRetriever:
             )
         vector_literal = "[" + ",".join(f"{x:.7g}" for x in query_vec) + "]"
 
+        # PRD-021: pgvector HNSW 는 approximate ANN — ef_search 기본값(40)에서
+        # 후보 셋이 query 마다 다를 수 있어 cosine distance tie 가 아니어도 비결정
+        # 결과 가능. ef_search 를 100 으로 키워 30~100 chunk 수준에서는 사실상
+        # exact 가 되도록 한다. production OpenAI 1024-dim 의 recall 도 향상.
+        # secondary ORDER BY (schema, "table") 은 진짜 동거리 케이스의 alphabetical
+        # 결정성 보장.
+        await self._session.execute(text("SET LOCAL hnsw.ef_search = 100"))
+
         stmt = text(
             """
             SELECT schema, "table", description
               FROM pyrene_schema_embeddings
              WHERE connection_id = :cid
-             ORDER BY embedding <=> CAST(:qv AS vector)
+             ORDER BY embedding <=> CAST(:qv AS vector),
+                      schema ASC,
+                      "table" ASC
              LIMIT :k
             """
         )
