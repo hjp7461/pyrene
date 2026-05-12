@@ -117,6 +117,9 @@ def _render_trace_fallback() -> None:
 
     except Exception as exc:
         st.error(friendly_error(exc, context="트레이스 데이터"))
+        if st.button("🔄 재시도", key="retry_traces_events"):
+            fetch_audit_events.clear()
+            st.rerun(scope="fragment")
 
     # Static screenshot placeholder
     st.caption("Last trace screenshot (static placeholder — replace with actual screenshot path):")

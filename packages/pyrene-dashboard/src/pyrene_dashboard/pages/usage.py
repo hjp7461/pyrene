@@ -89,6 +89,9 @@ def _render_usage_table() -> None:
             )
     except Exception as exc:
         st.error(friendly_error(exc, context="사용량 레코드"))
+        if st.button("🔄 재시도", key="retry_usage_records"):
+            fetch_usage_records.clear()
+            st.rerun(scope="fragment")
         return
 
     items: list[dict[str, Any]] = data.get("items", [])

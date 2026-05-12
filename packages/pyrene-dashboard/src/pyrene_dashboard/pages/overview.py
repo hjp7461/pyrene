@@ -111,6 +111,9 @@ def _render_data_tiles() -> None:
                     )
         except Exception as exc:
             st.error(friendly_error(exc, context="RBAC 매트릭스"))
+            if st.button("🔄 재시도", key="retry_overview_rbac"):
+                fetch_rbac_matrix.clear()
+                st.rerun(scope="fragment")
 
     # ---- Tile 2: Denials in last 1h ----
     with tile2:
@@ -144,6 +147,9 @@ def _render_data_tiles() -> None:
                 st.success("No denials in the last hour.")
         except Exception as exc:
             st.error(friendly_error(exc, context="거부 카운터"))
+            if st.button("🔄 재시도", key="retry_overview_denials"):
+                fetch_denials_last_hour.clear()
+                st.rerun(scope="fragment")
 
     # ---- Tile 3: Budget-blocked requests ----
     with tile3:
@@ -168,6 +174,9 @@ def _render_data_tiles() -> None:
                 st.caption("No blocked requests recorded.")
         except Exception as exc:
             st.error(friendly_error(exc, context="예산 차단 데이터"))
+            if st.button("🔄 재시도", key="retry_overview_budget"):
+                fetch_budget_blocked.clear()
+                st.rerun(scope="fragment")
 
     # ---- Lower section ----
     st.divider()
@@ -193,6 +202,9 @@ def _render_data_tiles() -> None:
                 st.info("No usage data available.")
         except Exception as exc:
             st.error(friendly_error(exc, context="사용량 요약"))
+            if st.button("🔄 재시도", key="retry_overview_cost"):
+                fetch_usage_summary.clear()
+                st.rerun(scope="fragment")
 
     with lower_right:
         st.subheader("Active Users")
@@ -209,6 +221,9 @@ def _render_data_tiles() -> None:
                 )
         except Exception as exc:
             st.error(friendly_error(exc, context="활성 사용자 수"))
+            if st.button("🔄 재시도", key="retry_overview_users"):
+                fetch_usage_summary.clear()
+                st.rerun(scope="fragment")
 
 
 _render_data_tiles()

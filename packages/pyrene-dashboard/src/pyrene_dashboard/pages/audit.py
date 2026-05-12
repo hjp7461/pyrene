@@ -84,6 +84,9 @@ def _render_audit() -> None:
             st.info("No timeline data available for the selected range.")
     except Exception as exc:
         st.warning(friendly_error(exc, context="감사 타임라인"))
+        if st.button("🔄 재시도", key="retry_audit_timeline"):
+            fetch_audit_timeline.clear()
+            st.rerun(scope="fragment")
 
     st.divider()
 
@@ -103,6 +106,9 @@ def _render_audit() -> None:
             )
     except Exception as exc:
         st.error(friendly_error(exc, context="감사 이벤트"))
+        if st.button("🔄 재시도", key="retry_audit_events"):
+            fetch_audit_events.clear()
+            st.rerun(scope="fragment")
         return
 
     items: list[dict[str, Any]] = data.get("items", [])
