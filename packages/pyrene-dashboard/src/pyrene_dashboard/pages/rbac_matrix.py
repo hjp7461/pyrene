@@ -77,6 +77,9 @@ def _render_rbac_matrix() -> None:
         )
     except Exception as exc:
         st.error(friendly_error(exc, context="RBAC 매트릭스"))
+        if st.button("🔄 재시도", key="retry_rbac_matrix"):
+            fetch_rbac_matrix.clear()
+            st.rerun(scope="fragment")
 
 
 @st.fragment(run_every=30)
@@ -121,6 +124,9 @@ def _render_data_permissions() -> None:
         st.dataframe(styled, use_container_width=True, hide_index=True)
     except Exception as exc:
         st.error(friendly_error(exc, context="데이터 권한"))
+        if st.button("🔄 재시도", key="retry_data_permissions"):
+            fetch_data_permissions.clear()
+            st.rerun(scope="fragment")
 
 
 _render_rbac_matrix()
