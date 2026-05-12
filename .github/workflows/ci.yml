@@ -28,5 +28,5 @@ jobs:
       - name: Type check (mypy --strict)
         run: uv run mypy --strict packages
 
-      - name: Test (pytest)
-        run: uv run pytest -v
+      - name: Test + Coverage (pytest --cov, fail under 75%)
+        run: uv run pytest packages -q --cov --cov-report=term
