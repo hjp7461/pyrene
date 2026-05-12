@@ -5,11 +5,20 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-**Pydantic AI 전용 · 셀프호스트 우선 · RBAC 1급** — LLM 에이전트 컨트롤 플레인.
+**회사 서버에 직접 설치해서 LLM 에이전트(예: 사내 SQL 분석 봇, AI 어시스턴트)를 *권한·예산·감사* 통제 하에 운영하는 도구입니다.**
 
-LangSmith / Portkey / Helicone / Langfuse 카테고리에서, *셀프호스트로 돌릴 수 있고 RBAC을 1급 시민으로 다루는* 컨트롤 플레인은 비어 있다. Pyrene은 그 자리를 채운다 — Pydantic AI ≥1.93 / PostgreSQL 16 + pgvector 위에서 **4계층 RBAC** (Connection → Database → Schema → Table), **사용자/팀 단위 예산 fail-closed**, **WORM 감사 + per-team hash chain**, **구조화 도구 (raw SQL 금지)** 를 기본값으로 제공한다.
+LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질문에 답하는 시스템을 만들 때, *누가 어떤 데이터를 볼 수 있고 · 얼마나 비용을 쓸 수 있고 · 모든 호출이 어떻게 기록되는지* 를 한 곳에서 관리합니다. Python 3.13 / FastAPI / PostgreSQL 16 위에 `docker compose` 한 줄로 띄울 수 있습니다.
 
-> 한 줄 요약: 구조화 도구 + 4계층 RBAC + fail-closed 예산 + WORM 감사 — 모두 단일 Hook chain 위에서 결정성·관측성을 잃지 않는다.
+**이런 팀에 필요합니다:**
+
+- *사내 데이터를 외부 SaaS 에 보내고 싶지 않은 팀* — 셀프호스트(자체 서버 설치) 우선 설계, 데이터 외부 유출 0
+- *AI 가 어떤 테이블/컬럼을 조회할 수 있는지 정밀하게 통제하려는 팀* — Connection → Database → Schema → Table 4계층 권한이 *기본 기능* (부가 기능 아님)
+- *AI 사용 비용을 사용자/팀별로 미리 한도 걸어두고 싶은 팀* — 한도 도달 시 *AI 호출 자체 차단* (사후 알람 아닌 사전 차단)
+- *모든 AI 호출이 변조 불가능한 형태로 기록되어야 하는 팀* (규제 산업, 금융 등) — 한 번 기록되면 수정/삭제 불가 + 팀 단위 해시 체인으로 무결성 즉시 검증
+
+**유사 도구와 차별점:** LangSmith / Portkey / Helicone / Langfuse 같은 *LLM 운영·관측 도구* 는 대부분 *클라우드 SaaS 형태*이고 *권한 관리(RBAC)는 부가 기능*입니다. Pyrene 은 (1) **셀프호스트 우선** (회사 서버에 직접 설치), (2) **RBAC 1급 시민** (4계층 권한 + 도구 단위 권한이 *기본*), (3) **fail-closed 예산** (한도 초과 시 호출 자체 차단, 사후 알람 아님), (4) **WORM 감사** (Write Once Read Many — 한 번 쓰이면 수정 불가 + 해시 체인 무결성), (5) **구조화 도구** (LLM 이 raw SQL 작성 금지, `run_select(table=, columns=, ...)` 같은 *구조화된 호출만* 허용 → SQL injection 차단) 가 모두 *기본값* 입니다.
+
+> *기술 한 줄 요약*: Pydantic AI ≥1.93 / PostgreSQL 16 + pgvector 기반. 단일 Hook chain (`BUDGET_PRE → TOOL_RBAC → DATA_RBAC → tool 실행 → COST → AUDIT → BUDGET_POST`) 위에서 결정성·관측성을 잃지 않고 4계층 RBAC + fail-closed 예산 + WORM 감사 + 구조화 도구를 기본값으로 제공.
 
 ---
 
