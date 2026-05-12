@@ -7,7 +7,12 @@ dependencies = [
     "pydantic>=2.7",
     # PRD-006 / PLAN-006 — observability is shared across packages so the
     # configure helper lives in core. Logfire vendors its own OTel SDK.
-    "logfire>=4.0",
+    # PRD-036: `[httpx]` extra previously came in transitively via the
+    # `pydantic-ai` meta-package; after switching to `pydantic-ai-slim`
+    # we declare it explicitly so the httpx fallback path in
+    # `logfire_setup` (when `instrument_pydantic_ai` is unavailable)
+    # remains functional.
+    "logfire[httpx]>=4.0",
     "opentelemetry-sdk>=1.27",
     # SQLAlchemy instrumentation isn't strictly needed by core, but the
     # `instrument_sqlalchemy` helper inside `logfire_setup` calls into
