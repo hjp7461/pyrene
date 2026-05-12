@@ -21,8 +21,8 @@ import streamlit as st
 from pyrene_dashboard import auth
 from pyrene_dashboard.api_client import (
     fetch_data_permissions,
+    fetch_or_stale,
     fetch_rbac_matrix,
-    friendly_error,
 )
 
 _GREEN = "#22c55e"
@@ -58,86 +58,87 @@ def _color_action(val: str) -> str:
 def _render_rbac_matrix() -> None:
     """Fetch and display the full Role x Tool matrix."""
     st.subheader("Role x Tool Permissions")
-    try:
-        with st.spinner("최신 데이터 동기화 중…", show_time=False):
-            matrix = fetch_rbac_matrix(token)
-        roles: list[dict[str, Any]] = matrix.get("roles", [])
-        tools: list[str] = matrix.get("tools", [])
+    matrix = fetch_or_stale(
+        key="rbac_matrix",
+        context="RBAC 매트릭스",
+        fetcher=fetch_rbac_matrix,
+        args=(token,),
+    )
+    if matrix is None:
+        return
+    roles: list[dict[str, Any]] = matrix.get("roles", [])
+    tools: list[str] = matrix.get("tools", [])
 
-        if not roles:
-            st.info("No RBAC permissions configured.")
-            return
+    if not roles:
+        st.info("No RBAC permissions configured.")
+        return
 
-        rows = []
-        for role_entry in roles:
-            role_name: str = role_entry.get("role_name", role_entry.get("role_id", "?"))
-            tool_map: dict[str, str] = role_entry.get("tools", {})
-            row: dict[str, str] = {"Role": role_name}
-            for tool in tools:
-                row[tool] = tool_map.get(tool, "deny")
-            rows.append(row)
+    rows = []
+    for role_entry in roles:
+        role_name: str = role_entry.get("role_name", role_entry.get("role_id", "?"))
+        tool_map: dict[str, str] = role_entry.get("tools", {})
+        row: dict[str, str] = {"Role": role_name}
+        for tool in tools:
+            row[tool] = tool_map.get(tool, "deny")
+        rows.append(row)
 
-        df = pd.DataFrame(rows).set_index("Role")
+    df = pd.DataFrame(rows).set_index("Role")
 
-        # Apply color styling to all data columns
-        styled = df.style.map(_color_action)  # type: ignore[arg-type]
-        st.dataframe(styled, use_container_width=True)
-        st.caption(
-            f"{len(roles)} role(s) x {len(tools)} tool(s) — read-only."
-            " Use the API or CLI to modify permissions."
-        )
-    except Exception as exc:
-        st.error(friendly_error(exc, context="RBAC 매트릭스"))
-        if st.button("🔄 재시도", key="retry_rbac_matrix"):
-            fetch_rbac_matrix.clear()
-            st.rerun(scope="fragment")
+    # Apply color styling to all data columns
+    styled = df.style.map(_color_action)  # type: ignore[arg-type]
+    st.dataframe(styled, use_container_width=True)
+    st.caption(
+        f"{len(roles)} role(s) x {len(tools)} tool(s) — read-only."
+        " Use the API or CLI to modify permissions."
+    )
 
 
 @st.fragment(run_every=30)
 def _render_data_permissions() -> None:
     """Fetch and display data-level permissions (connection/schema/table)."""
     st.subheader("Data Permissions (Role x Connection / Schema / Table)")
-    try:
-        with st.spinner("최신 데이터 동기화 중…", show_time=False):
-            data = fetch_data_permissions(token, size=100)
-        items: list[dict[str, Any]] = (
-            data if isinstance(data, list) else data.get("items", [])
+    data = fetch_or_stale(
+        key="data_permissions",
+        context="데이터 권한",
+        fetcher=fetch_data_permissions,
+        args=(token,),
+        kwargs={"size": 100},
+    )
+    if data is None:
+        return
+    items: list[dict[str, Any]] = (
+        data if isinstance(data, list) else data.get("items", [])
+    )
+
+    if not items:
+        st.info("No data-level permissions configured.")
+        return
+
+    rows = []
+    for perm in items:
+        rows.append(
+            {
+                "Role ID": str(perm.get("role_id", ""))[:8] + "…",
+                "Connection": str(perm.get("connection_id", ""))[:8] + "…",
+                "Schema": perm.get("schema", "*"),
+                "Table": perm.get("table", "*"),
+                "Action": perm.get("action", "deny"),
+                "Admin grant": "Yes" if perm.get("is_admin_grant") else "No",
+            }
         )
 
-        if not items:
-            st.info("No data-level permissions configured.")
-            return
+    df = pd.DataFrame(rows)
 
-        rows = []
-        for perm in items:
-            rows.append(
-                {
-                    "Role ID": str(perm.get("role_id", ""))[:8] + "…",
-                    "Connection": str(perm.get("connection_id", ""))[:8] + "…",
-                    "Schema": perm.get("schema", "*"),
-                    "Table": perm.get("table", "*"),
-                    "Action": perm.get("action", "deny"),
-                    "Admin grant": "Yes" if perm.get("is_admin_grant") else "No",
-                }
-            )
+    def _color_row(s: pd.Series[str]) -> list[str]:
+        action = s.get("Action", "deny")
+        bg = _GREEN if action == "allow" else _RED
+        return [
+            f"background-color: {bg}; color: white" if col == "Action" else ""
+            for col in s.index
+        ]
 
-        df = pd.DataFrame(rows)
-
-        def _color_row(s: pd.Series[str]) -> list[str]:
-            action = s.get("Action", "deny")
-            bg = _GREEN if action == "allow" else _RED
-            return [
-                f"background-color: {bg}; color: white" if col == "Action" else ""
-                for col in s.index
-            ]
-
-        styled = df.style.apply(_color_row, axis=1)
-        st.dataframe(styled, use_container_width=True, hide_index=True)
-    except Exception as exc:
-        st.error(friendly_error(exc, context="데이터 권한"))
-        if st.button("🔄 재시도", key="retry_data_permissions"):
-            fetch_data_permissions.clear()
-            st.rerun(scope="fragment")
+    styled = df.style.apply(_color_row, axis=1)
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
 
 _render_rbac_matrix()

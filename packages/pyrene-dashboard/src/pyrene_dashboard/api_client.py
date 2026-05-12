@@ -28,6 +28,8 @@ Usage
 from __future__ import annotations
 
 import os
+import time
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -125,6 +127,66 @@ def friendly_error(exc: BaseException, context: str = "데이터") -> str:
 
     # 3) fallback
     return f"{context}을(를) 불러올 수 없습니다 (원인: {type(exc).__name__})"
+
+
+# ---------------------------------------------------------------------------
+# Stale-while-error fallback (PRD-032 / ADR-018)
+# ---------------------------------------------------------------------------
+
+
+def format_age_korean(ts: float | None) -> str:
+    """경과 시간을 한국어 상대 시간으로 포맷. PRD-032 / ADR-018.
+
+    None → "방금" (cache-miss 또는 첫 fetch 직후 대비).
+    """
+    if ts is None:
+        return "방금"
+    delta = time.time() - ts
+    if delta < 1:
+        return "방금"
+    if delta < 60:
+        return f"{int(delta)}초 전"
+    if delta < 3600:
+        return f"{int(delta // 60)}분 전"
+    return f"{int(delta // 3600)}시간 전"
+
+
+def fetch_or_stale[T](
+    *,
+    key: str,
+    context: str,
+    fetcher: Callable[..., T],
+    args: tuple[object, ...] = (),
+    kwargs: dict[str, object] | None = None,
+) -> T | None:
+    """Fetch with stale-while-error fallback. PRD-032 / ADR-018.
+
+    3 분기:
+    - 성공: session_state[f"_stale_{key}"] 캐시 갱신, 데이터 반환
+    - 실패 + cache 있음: 노란 경고 + stale 데이터 반환
+    - 실패 + cache 없음: 빨간 에러 + retry 버튼 + None 반환
+
+    내부에 spinner / friendly_error / retry button 4 패턴 통합 (Do #8).
+    """
+    kwargs = kwargs or {}
+    try:
+        with st.spinner("최신 데이터 동기화 중…", show_time=False):
+            data = fetcher(*args, **kwargs)
+        st.session_state[f"_stale_{key}"] = (data, time.time())
+        return data
+    except Exception as exc:
+        cached = st.session_state.get(f"_stale_{key}")
+        if cached is not None:
+            cached_data, cached_ts = cached
+            st.warning(
+                f"⚠️ 데이터 갱신 실패 — 마지막 갱신 {format_age_korean(cached_ts)}"
+            )
+            return cached_data  # type: ignore[no-any-return]
+        st.error(friendly_error(exc, context=context))
+        if st.button("🔄 재시도", key=f"retry_{key}"):
+            fetcher.clear()  # type: ignore[attr-defined]  # @st.cache_data 의 .clear()
+            st.rerun(scope="fragment")
+        return None
 
 
 # ---------------------------------------------------------------------------

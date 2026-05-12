@@ -19,7 +19,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from pyrene_dashboard import auth
-from pyrene_dashboard.api_client import fetch_audit_events, friendly_error
+from pyrene_dashboard.api_client import fetch_audit_events, fetch_or_stale
 
 _title_col, _refresh_col = st.columns([8, 2])
 with _title_col:
@@ -95,42 +95,40 @@ def _render_trace_fallback() -> None:
         with col_btn:
             st.link_button("Open in Logfire", _LOGFIRE_URL, use_container_width=True)
 
-    try:
-        with st.spinner("최신 데이터 동기화 중…", show_time=False):
-            data = fetch_audit_events(token, size=5)
+    data = fetch_or_stale(
+        key="traces_events",
+        context="트레이스 데이터",
+        fetcher=fetch_audit_events,
+        args=(token,),
+        kwargs={"size": 5},
+    )
+    if data is not None:
         items: list[dict[str, Any]] = data.get("items", [])
 
         if not items:
             st.info("No recent trace data available.")
-            return
-
-        st.caption("Showing latest 5 audit events as trace proxy (auto-refreshed every 30 s):")
-        for event in items:
-            outcome: str = event.get("outcome", "")
-            icon = "🔴" if outcome in ("deny", "denied") else "🟢"
-            label = (
-                f"{icon} [{event.get('created_at', '')[:19]}] "
-                f"{event.get('event_type', 'unknown')} "
-                f"req={str(event.get('request_id', ''))[:8]}…"
-            )
-            with st.expander(label, expanded=False):
-                st.json(
-                    {
-                        "id": event.get("id"),
-                        "event_type": event.get("event_type"),
-                        "outcome": event.get("outcome"),
-                        "tool_name": event.get("tool_name"),
-                        "user_id": event.get("user_id"),
-                        "request_id": event.get("request_id"),
-                        "created_at": event.get("created_at"),
-                    }
+        else:
+            st.caption("Showing latest 5 audit events as trace proxy (auto-refreshed every 30 s):")
+            for event in items:
+                outcome: str = event.get("outcome", "")
+                icon = "🔴" if outcome in ("deny", "denied") else "🟢"
+                label = (
+                    f"{icon} [{event.get('created_at', '')[:19]}] "
+                    f"{event.get('event_type', 'unknown')} "
+                    f"req={str(event.get('request_id', ''))[:8]}…"
                 )
-
-    except Exception as exc:
-        st.error(friendly_error(exc, context="트레이스 데이터"))
-        if st.button("🔄 재시도", key="retry_traces_events"):
-            fetch_audit_events.clear()
-            st.rerun(scope="fragment")
+                with st.expander(label, expanded=False):
+                    st.json(
+                        {
+                            "id": event.get("id"),
+                            "event_type": event.get("event_type"),
+                            "outcome": event.get("outcome"),
+                            "tool_name": event.get("tool_name"),
+                            "user_id": event.get("user_id"),
+                            "request_id": event.get("request_id"),
+                            "created_at": event.get("created_at"),
+                        }
+                    )
 
     # Static screenshot placeholder
     st.caption("Last trace screenshot (static placeholder — replace with actual screenshot path):")

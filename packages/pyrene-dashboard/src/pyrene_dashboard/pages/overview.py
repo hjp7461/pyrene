@@ -24,9 +24,9 @@ from pyrene_dashboard import auth
 from pyrene_dashboard.api_client import (
     fetch_budget_blocked,
     fetch_denials_last_hour,
+    fetch_or_stale,
     fetch_rbac_matrix,
     fetch_usage_summary,
-    friendly_error,
 )
 
 # ---------------------------------------------------------------------------
@@ -105,9 +105,13 @@ def _render_data_tiles() -> None:
     # ---- Tile 1: RBAC Heatmap ----
     with tile1:
         st.subheader("RBAC Heatmap")
-        try:
-            with st.spinner("최신 데이터 동기화 중…", show_time=False):
-                matrix = fetch_rbac_matrix(token)
+        matrix = fetch_or_stale(
+            key="overview_rbac",
+            context="RBAC 매트릭스",
+            fetcher=fetch_rbac_matrix,
+            args=(token,),
+        )
+        if matrix is not None:
             heatmap_df = _build_heatmap_df(matrix)
             if heatmap_df.empty:
                 st.info("No RBAC matrix data available.")
@@ -120,18 +124,17 @@ def _render_data_tiles() -> None:
                         f"Showing 4 of {len(all_tools)} tools."
                         " See RBAC Matrix page for full view."
                     )
-        except Exception as exc:
-            st.error(friendly_error(exc, context="RBAC 매트릭스"))
-            if st.button("🔄 재시도", key="retry_overview_rbac"):
-                fetch_rbac_matrix.clear()
-                st.rerun(scope="fragment")
 
     # ---- Tile 2: Denials in last 1h ----
     with tile2:
         st.subheader("Denials — last 1h")
-        try:
-            with st.spinner("최신 데이터 동기화 중…", show_time=False):
-                denial_data = fetch_denials_last_hour(token)
+        denial_data = fetch_or_stale(
+            key="overview_denials",
+            context="거부 카운터",
+            fetcher=fetch_denials_last_hour,
+            args=(token,),
+        )
+        if denial_data is not None:
             denial_count: int = denial_data.get("count", 0)
             recent_denials: list[dict[str, Any]] = denial_data.get("recent", [])
 
@@ -156,18 +159,17 @@ def _render_data_tiles() -> None:
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
             else:
                 st.success("No denials in the last hour.")
-        except Exception as exc:
-            st.error(friendly_error(exc, context="거부 카운터"))
-            if st.button("🔄 재시도", key="retry_overview_denials"):
-                fetch_denials_last_hour.clear()
-                st.rerun(scope="fragment")
 
     # ---- Tile 3: Budget-blocked requests ----
     with tile3:
         st.subheader("Budget-Blocked Requests")
-        try:
-            with st.spinner("최신 데이터 동기화 중…", show_time=False):
-                blocked_data = fetch_budget_blocked(token)
+        blocked_data = fetch_or_stale(
+            key="overview_budget",
+            context="예산 차단 데이터",
+            fetcher=fetch_budget_blocked,
+            args=(token,),
+        )
+        if blocked_data is not None:
             blocked_count: int = blocked_data.get("count", 0)
             trend: list[dict[str, Any]] = blocked_data.get("trend", [])
 
@@ -183,11 +185,6 @@ def _render_data_tiles() -> None:
                 st.line_chart(trend_df["count"], height=150, use_container_width=True)
             else:
                 st.caption("No blocked requests recorded.")
-        except Exception as exc:
-            st.error(friendly_error(exc, context="예산 차단 데이터"))
-            if st.button("🔄 재시도", key="retry_overview_budget"):
-                fetch_budget_blocked.clear()
-                st.rerun(scope="fragment")
 
     # ---- Lower section ----
     st.divider()
@@ -195,9 +192,14 @@ def _render_data_tiles() -> None:
 
     with lower_left:
         st.subheader("Daily Cost (USD)")
-        try:
-            with st.spinner("최신 데이터 동기화 중…", show_time=False):
-                summaries = fetch_usage_summary(token, period="day")
+        summaries = fetch_or_stale(
+            key="overview_cost",
+            context="사용량 요약",
+            fetcher=fetch_usage_summary,
+            args=(token,),
+            kwargs={"period": "day"},
+        )
+        if summaries is not None:
             if summaries:
                 cost_df = pd.DataFrame(
                     [
@@ -211,30 +213,24 @@ def _render_data_tiles() -> None:
                 st.line_chart(cost_df["cost_usd"], use_container_width=True)
             else:
                 st.info("No usage data available.")
-        except Exception as exc:
-            st.error(friendly_error(exc, context="사용량 요약"))
-            if st.button("🔄 재시도", key="retry_overview_cost"):
-                fetch_usage_summary.clear()
-                st.rerun(scope="fragment")
 
     with lower_right:
         st.subheader("Active Users")
-        try:
-            with st.spinner("최신 데이터 동기화 중…", show_time=False):
-                summaries = fetch_usage_summary(token, period="day")
-            if summaries and summaries:
-                latest = summaries[-1]
-                active_users: int = latest.get("request_count", 0)
-                st.metric(
-                    label="Requests today",
-                    value=active_users,
-                    help="Total request count in the most recent day bucket",
-                )
-        except Exception as exc:
-            st.error(friendly_error(exc, context="활성 사용자 수"))
-            if st.button("🔄 재시도", key="retry_overview_users"):
-                fetch_usage_summary.clear()
-                st.rerun(scope="fragment")
+        users_summaries = fetch_or_stale(
+            key="overview_users",
+            context="활성 사용자 수",
+            fetcher=fetch_usage_summary,
+            args=(token,),
+            kwargs={"period": "day"},
+        )
+        if users_summaries:
+            latest = users_summaries[-1]
+            active_users: int = latest.get("request_count", 0)
+            st.metric(
+                label="Requests today",
+                value=active_users,
+                help="Total request count in the most recent day bucket",
+            )
 
 
 _render_data_tiles()
