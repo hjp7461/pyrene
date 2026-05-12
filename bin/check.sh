@@ -14,8 +14,8 @@ uv run ruff check
 echo "==> 2/3  Type check (mypy --strict packages)"
 uv run mypy --strict packages
 
-echo "==> 3/3  Test (pytest packages -q)"
-uv run pytest packages -q
+echo "==> 3/3  Test + Coverage (pytest packages -q --cov, fail under 75%)"
+uv run pytest packages -q --cov --cov-report=term
 
 echo
 echo "✓ 3 단계 모두 통과 — CI 와 동등 invariant 만족."

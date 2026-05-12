@@ -18,6 +18,7 @@ pyrene-gateway = { workspace = true }
 dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
     "ruff>=0.5",
     "mypy>=1.10",
     "testcontainers[postgres]>=4.7",
@@ -137,4 +138,41 @@ markers = [
 # warning here. Set `LOGFIRE_IGNORE_NO_CONFIG=0` locally to surface it.
 filterwarnings = [
     "ignore:.*logfire.configure.*:UserWarning",
+]
+
+# PRD-035: src-only coverage measurement. Streamlit pages/* + app.py omitted
+# because Streamlit runtime dependency precludes unit testing — PRD-021/026
+# textual unit pattern (`_PAGES_DIR.glob` + grep) covers invariants instead.
+# Threshold 75% gives ~8% effective buffer below baseline 83%.
+[tool.coverage.run]
+source = [
+    "packages/pyrene-core/src",
+    "packages/pyrene-sql/src",
+    "packages/pyrene-auth/src",
+    "packages/pyrene-agents/src",
+    "packages/pyrene-gateway/src",
+    "packages/pyrene-audit/src",
+    "packages/pyrene-metering/src",
+    "packages/pyrene-rbac/src",
+    "packages/pyrene-mcp-tools/src",
+    "packages/pyrene-data-rbac/src",
+    "packages/pyrene-budget/src",
+    "packages/pyrene-dashboard/src",
+]
+omit = [
+    "packages/pyrene-dashboard/src/pyrene_dashboard/pages/*.py",
+    "packages/pyrene-dashboard/src/pyrene_dashboard/app.py",
+]
+relative_files = true
+
+[tool.coverage.report]
+fail_under = 75
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
 ]
