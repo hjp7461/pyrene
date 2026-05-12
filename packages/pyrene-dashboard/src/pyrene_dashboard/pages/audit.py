@@ -19,7 +19,7 @@ from pyrene_dashboard import auth
 from pyrene_dashboard.api_client import (
     fetch_audit_events,
     fetch_audit_timeline,
-    friendly_error,
+    fetch_or_stale,
 )
 
 st.title("Audit Timeline")
@@ -72,43 +72,41 @@ def _render_audit() -> None:
             f_since.year, f_since.month, f_since.day, tz="UTC"
         ).to_iso8601_string()
 
-    try:
-        with st.spinner("최신 데이터 동기화 중…", show_time=False):
-            timeline_data = fetch_audit_timeline(token, since=since_str)
-        if timeline_data:
-            timeline_df = pd.DataFrame(timeline_data)
-            timeline_df["bucket"] = pd.to_datetime(timeline_df["bucket"], utc=True)
-            timeline_df = timeline_df.set_index("bucket").sort_index()
-            st.line_chart(timeline_df["count"], use_container_width=True)
-        else:
-            st.info("No timeline data available for the selected range.")
-    except Exception as exc:
-        st.warning(friendly_error(exc, context="감사 타임라인"))
-        if st.button("🔄 재시도", key="retry_audit_timeline"):
-            fetch_audit_timeline.clear()
-            st.rerun(scope="fragment")
+    timeline_data = fetch_or_stale(
+        key="audit_timeline",
+        context="감사 타임라인",
+        fetcher=fetch_audit_timeline,
+        args=(token,),
+        kwargs={"since": since_str},
+    )
+    if timeline_data:
+        timeline_df = pd.DataFrame(timeline_data)
+        timeline_df["bucket"] = pd.to_datetime(timeline_df["bucket"], utc=True)
+        timeline_df = timeline_df.set_index("bucket").sort_index()
+        st.line_chart(timeline_df["count"], use_container_width=True)
+    elif timeline_data is not None:
+        st.info("No timeline data available for the selected range.")
 
     st.divider()
 
     # ---- Paginated event table ----
     st.subheader("Audit Events")
-    try:
-        with st.spinner("최신 데이터 동기화 중…", show_time=False):
-            data = fetch_audit_events(
-                token,
-                page=int(audit_page_num),
-                size=int(f_page_size),
-                event_type=f_event_type.strip() or None,
-                user_id=f_user_id.strip() or None,
-                since=since_str,
-                scope=f_scope.strip() or None,
-                request_id=f_request_id.strip() or None,
-            )
-    except Exception as exc:
-        st.error(friendly_error(exc, context="감사 이벤트"))
-        if st.button("🔄 재시도", key="retry_audit_events"):
-            fetch_audit_events.clear()
-            st.rerun(scope="fragment")
+    data = fetch_or_stale(
+        key="audit_events",
+        context="감사 이벤트",
+        fetcher=fetch_audit_events,
+        args=(token,),
+        kwargs={
+            "page": int(audit_page_num),
+            "size": int(f_page_size),
+            "event_type": f_event_type.strip() or None,
+            "user_id": f_user_id.strip() or None,
+            "since": since_str,
+            "scope": f_scope.strip() or None,
+            "request_id": f_request_id.strip() or None,
+        },
+    )
+    if data is None:
         return
 
     items: list[dict[str, Any]] = data.get("items", [])
