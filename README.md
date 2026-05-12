@@ -52,6 +52,68 @@ BUDGET_POST =90   ← 실제 비용 vs 한도 재검증
 
 40 ~ 70 우선순위 구간은 향후 hook 예약 영역이다.
 
+### 패키지 의존성 그래프
+
+```mermaid
+graph TB
+    subgraph L1["Foundation (의존성 0)"]
+        core["pyrene-core"]
+    end
+    subgraph L2["Identity"]
+        auth["pyrene-auth"]
+    end
+    subgraph L3["Runtime"]
+        gateway["pyrene-gateway"]
+        agents["pyrene-agents"]
+    end
+    subgraph L4["Hook chain participants (priority)"]
+        budget["pyrene-budget<br/>10 / 90"]
+        rbac["pyrene-rbac<br/>20"]
+        drbac["pyrene-data-rbac<br/>30"]
+        meter["pyrene-metering<br/>75"]
+        audit["pyrene-audit<br/>80"]
+    end
+    subgraph L5["Domain & UI"]
+        sql["pyrene-sql"]
+        mcp["pyrene-mcp-tools"]
+        dash["pyrene-dashboard"]
+    end
+
+    auth --> core
+    gateway --> auth
+    gateway --> core
+    agents --> core
+    budget --> core
+    rbac --> core
+    drbac --> core
+    meter --> core
+    audit --> core
+    sql --> agents
+    sql --> core
+    mcp --> core
+    dash --> core
+```
+
+모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"12 패키지" 의 의존 규칙 참조).
+
+### 4계층 데이터 RBAC (F-08)
+
+```mermaid
+flowchart LR
+    Q["run_select<br/>connection=main_pg<br/>db=dvdrental<br/>schema=public<br/>table=payment"]
+    Q --> L1{"1. Connection<br/>main_pg"}
+    L1 -->|allow| L2{"2. Database<br/>dvdrental"}
+    L2 -->|allow| L3{"3. Schema<br/>public"}
+    L3 -->|allow| L4{"4. Table<br/>payment"}
+    L4 -->|allow| OK["ALLOW<br/>(SQL 실행)"]
+    L4 -.->|"deny precedence<br/>(예: schema=auth)"| DENY["RBACDenied<br/>(403)"]
+
+    style OK fill:#86efac,color:#000
+    style DENY fill:#fca5a5,color:#000
+```
+
+4계층 모두 ALLOW 시에만 도구가 실행된다. 어느 계층이든 명시적 deny 가 있으면 즉시 차단 (deny precedence) — 시나리오 A 의 `payment` 테이블 SELECT 가 정확히 이 경로를 따른다.
+
 ### 12 패키지
 
 | 패키지 | 역할 |
