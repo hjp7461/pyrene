@@ -1,5 +1,10 @@
 # Pyrene
 
+[![CI](https://github.com/hjp7461/pyrene/actions/workflows/ci.yml/badge.svg)](https://github.com/hjp7461/pyrene/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/hjp7461/pyrene/actions/workflows/codeql.yml/badge.svg)](https://github.com/hjp7461/pyrene/actions/workflows/codeql.yml)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 **Pydantic AI 전용 · 셀프호스트 우선 · RBAC 1급** — LLM 에이전트 컨트롤 플레인.
 
 LangSmith / Portkey / Helicone / Langfuse 카테고리에서, *셀프호스트로 돌릴 수 있고 RBAC을 1급 시민으로 다루는* 컨트롤 플레인은 비어 있다. Pyrene은 그 자리를 채운다 — Pydantic AI ≥1.93 / PostgreSQL 16 + pgvector 위에서 **4계층 RBAC** (Connection → Database → Schema → Table), **사용자/팀 단위 예산 fail-closed**, **WORM 감사 + per-team hash chain**, **구조화 도구 (raw SQL 금지)** 를 기본값으로 제공한다.
@@ -20,6 +25,8 @@ LangSmith / Portkey / Helicone / Langfuse 카테고리에서, *셀프호스트�
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
+| 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
+| 코드 커버리지 | **83.41%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
 
 ---
@@ -268,7 +275,7 @@ CI 파이프라인 (`.github/workflows/`):
 
 ---
 
-## 고정 결정 (요약, 13건)
+## 고정 결정 (요약, 14건)
 
 | # | 결정 |
 |---|------|
@@ -285,6 +292,7 @@ CI 파이프라인 (`.github/workflows/`):
 | F-11 | UI 최소화: **Streamlit** (React 미사용) |
 | F-12 | 관측성: **Logfire 필수 (선택)** + OTel 호환 |
 | F-13 | 면접 시그널 3가지: **ADR · Pydantic Evals · 공개 Logfire trace** |
+| F-14 | **LLM tool-call retry boundary 는 wrap-then-classify** — `pydantic_ai.UnexpectedModelBehavior` 를 `ModelToolValidationError(RetryableError)` 로 wrap 해 외부 `RetryWrapper` 가 단일 책임으로 retry 담당 (ADR-016) |
 
 새 결정은 ADR로 기록한 뒤에만 이 표를 갱신한다.
 
