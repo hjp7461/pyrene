@@ -1,0 +1,21 @@
+# PRD-028: GitHub Actions 자동 bump.
+# astral-sh/setup-uv@v8+ 의 immutable release policy (PRD-025 F-2) 의
+# *수동 patch 모니터링 부담* 보상. Python deps (uv/pip) 자동 bump 는
+# 별도 PRD 후보 (mypy/pytest 호환성 검증 비용).
+#
+# 참고: .claude/rules/operational-notes.md §"GitHub Actions deprecation 대응"
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - ci
+      - dependencies
+    commit-message:
+      prefix: ci
+      include: scope
