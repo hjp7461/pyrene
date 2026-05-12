@@ -22,7 +22,18 @@ from pyrene_dashboard.api_client import (
     friendly_error,
 )
 
-st.title("Audit Timeline")
+_title_col, _refresh_col = st.columns([8, 2])
+with _title_col:
+    st.title("Audit Timeline")
+with _refresh_col:
+    if st.button(
+        "🔄 새로 고침",
+        key="refresh_audit",
+        use_container_width=True,
+        help="모든 캐시를 비우고 페이지를 새로 고침합니다",
+    ):
+        st.cache_data.clear()
+        st.rerun()
 
 token = auth.require_admin()
 

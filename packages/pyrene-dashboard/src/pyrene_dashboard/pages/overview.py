@@ -36,7 +36,18 @@ _GREEN = "#22c55e"
 _RED = "#ef4444"
 _AMBER = "#f59e0b"
 
-st.title("Overview")
+_title_col, _refresh_col = st.columns([8, 2])
+with _title_col:
+    st.title("Overview")
+with _refresh_col:
+    if st.button(
+        "🔄 새로 고침",
+        key="refresh_overview",
+        use_container_width=True,
+        help="모든 캐시를 비우고 페이지를 새로 고침합니다",
+    ):
+        st.cache_data.clear()
+        st.rerun()
 
 token = auth.require_admin()
 
