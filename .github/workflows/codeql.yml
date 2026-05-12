@@ -1,0 +1,66 @@
+# PRD-037 (D-3): GitHub CodeQL static security analysis.
+#
+# Complements the existing security cluster:
+#   - security-evals.yml — runtime mock evals (RBAC bypass / prompt injection)
+#   - PRD-029 SHA pin    — supply-chain (action maintainer takeover defense)
+#   - this workflow      — static AST analysis (SQL injection / hardcoded
+#                          credentials / path traversal / etc.)
+#
+# Triggers (PRD-037 §4):
+#   - push (main): post-merge baseline refresh on Security tab
+#   - pull_request: early detection before merge
+#   - schedule weekly: re-run with latest CodeQL queries (regression guard
+#     when GitHub ships new query packs)
+#
+# Action SHA pinning per Do #9 (.claude/rules/code-style.md) + PRD-029.
+# Dependabot (PRD-028) auto-updates the SHA + version comment.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Monday 03:00 UTC = KST 12:00 (off-peak GitHub runners).
+    - cron: '0 3 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      # Least-privilege per CodeQL official guidance:
+      actions: read
+      contents: read
+      security-events: write   # required to upload SARIF results
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        with:
+          languages: ${{ matrix.language }}
+          # `security-extended` ships ~100 security queries (vs ~50 in
+          # the default suite). Code quality queries are out of scope —
+          # ruff already covers that lane.
+          queries: security-extended
+          # Python is interpreted; no build step needed. Skipping
+          # autobuild halves workflow runtime.
+          build-mode: none
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        with:
+          # Forward-compatible category for future multi-language matrix.
+          category: "/language:${{ matrix.language }}"
