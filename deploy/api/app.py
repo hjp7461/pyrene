@@ -45,9 +45,14 @@ from pyrene_auth.jwt import JwtSettings
 from pyrene_auth.routes.admin.roles import admin_router as auth_admin_router
 from pyrene_auth.routes.auth import auth_router
 from pyrene_auth.settings import AuthSettings
+from pyrene_sql.env_bridge import bridge_sql_settings_to_environ
 
 
 def _build() -> FastAPI:
+    # PRD-033 / PRD-019 F-3 mirror: Pydantic AI providers (Anthropic/OpenAI)
+    # read os.environ directly; bridge Settings → environ at startup so
+    # `/agents/{spec_id}/run` (sql_analyst.run) works in .env-only containers.
+    bridge_sql_settings_to_environ()
     settings = AuthSettings()
     jwt_cfg = JwtSettings()
     engine = make_auth_engine(settings)
