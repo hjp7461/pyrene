@@ -8,12 +8,14 @@ yaml / body parse layer. PRD-008 §F1: "스펙에 없는 도구 참조 → 422".
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import Field
 
 from pyrene_agents.output_schemas import OutputSchemaKey
 from pyrene_core import StrictBaseModel
+from pyrene_sql.agent import AnalystResponse
 
 
 class AgentSpecCreate(StrictBaseModel):
@@ -70,10 +72,23 @@ class AgentRunRequest(StrictBaseModel):
     question: str = Field(min_length=1, max_length=8192)
 
 
+class AnalystResponseWithObservability(AnalystResponse):
+    """PRD-046 §4.1 — additive 3 필드 wrapper for /run-with-trace endpoint.
+
+    기존 /run endpoint 의 AnalystResponse 와 *additive* 호환. 새 필드는
+    None default — 기존 호출자 (CLI / pytest / dashboard) 영향 0.
+    """
+
+    audit_id: UUID | None = None
+    cost_usd: Decimal | None = None
+    logfire_trace_url: str | None = None
+
+
 __all__ = [
     "AgentRunRequest",
     "AgentSpecCreate",
     "AgentSpecResponse",
     "AgentVersionCreate",
     "AgentVersionResponse",
+    "AnalystResponseWithObservability",
 ]

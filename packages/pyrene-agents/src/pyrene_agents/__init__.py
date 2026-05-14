@@ -41,6 +41,7 @@ from pyrene_agents.schemas import (
     AgentSpecResponse,
     AgentVersionCreate,
     AgentVersionResponse,
+    AnalystResponseWithObservability,
 )
 from pyrene_agents.tool_registry import (
     ToolCallable,
@@ -64,6 +65,7 @@ __all__ = [
     "AgentVersion",
     "AgentVersionCreate",
     "AgentVersionResponse",
+    "AnalystResponseWithObservability",
     "Base",
     "OutputSchemaKey",
     "ToolCallable",
