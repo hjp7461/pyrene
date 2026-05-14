@@ -77,15 +77,16 @@ async def lookup_cost_usd(
         return None
 
 
-def build_logfire_trace_url(
-    trace_id: int | None,
-    span_id: int | None,
-) -> str | None:
-    """LOGFIRE_URL env + hex(trace_id) + hex(span_id) → 공개 URL.
+def build_logfire_trace_url(trace_id: int | None) -> str | None:
+    """LOGFIRE_URL env + hex(trace_id) → 공개 URL.
 
-    LOGFIRE_URL 미설정 / id None / invalid span context 시 None.
+    `pyrene-mcp-frontend.api_client.logfire_trace_url` 의 `/traces/{trace_id}`
+    형식과 정합 (server-side 가 OTel int → 32-char hex 변환만 추가). span-level
+    deep link 는 Logfire 공개 URL 패턴 미확인 — follow-up 후보.
+
+    LOGFIRE_URL 미설정 / trace_id None (invalid span context) 시 None.
     """
     base = os.getenv("LOGFIRE_URL")
-    if not base or trace_id is None or span_id is None:
+    if not base or trace_id is None:
         return None
-    return f"{base.rstrip('/')}/traces/{trace_id:032x}/spans/{span_id:016x}"
+    return f"{base.rstrip('/')}/traces/{trace_id:032x}"
