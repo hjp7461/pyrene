@@ -92,7 +92,7 @@ async def test_top_k_emits_cosine_distance_order_by() -> None:
     # The retriever embedded the query exactly once with the user text.
     assert embedder.calls == [["monthly revenue"]]
 
-    # PRD-021: retriever now also emits `SET LOCAL hnsw.ef_search = 100` to
+    # PRD-021 → PRD-041: retriever emits `SET LOCAL hnsw.ef_search = 200` to
     # tame HNSW approximate ANN before the SELECT. Filter to the SELECT call
     # for the cosine/order/limit checks.
     select_calls = [
