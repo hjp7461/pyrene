@@ -20,6 +20,11 @@ from pyrene_agents.exporter import (
     load_spec_from_yaml,
 )
 from pyrene_agents.models import AgentSpec, AgentVersion, Base, metadata
+from pyrene_agents.observability import (
+    build_logfire_trace_url,
+    lookup_audit_event_id,
+    lookup_cost_usd,
+)
 from pyrene_agents.output_schemas import (
     OUTPUT_SCHEMA_REGISTRY,
     OutputSchemaKey,
@@ -72,6 +77,7 @@ __all__ = [
     "ToolNotRegisteredError",
     "ToolRegistry",
     "build_agent",
+    "build_logfire_trace_url",
     "build_phase1_spec",
     "default_tool_registry",
     "export_phase1_yaml",
@@ -83,6 +89,8 @@ __all__ = [
     "list_specs_for_team",
     "list_versions",
     "load_spec_from_yaml",
+    "lookup_audit_event_id",
+    "lookup_cost_usd",
     "make_app",
     "metadata",
     "resolve_output_schema",
