@@ -60,15 +60,28 @@ class _FakeResult:
 class _FakeSession:
     """Minimal AsyncSession stub: records every execute() call.
 
-    `responses` is the list of rows the next `.execute()` call returns.
+    PRD-042: rows can be supplied per-chunk_type (table/column) via
+    `rows_by_chunk_type`, falling back to a single `rows` list. SET LOCAL
+    statements (no `ct` param) always receive the fallback (typically
+    empty).
     """
 
-    def __init__(self, rows: list[tuple[Any, ...]]) -> None:
-        self.rows = rows
+    def __init__(
+        self,
+        rows: list[tuple[Any, ...]] | None = None,
+        *,
+        rows_by_chunk_type: dict[str, list[tuple[Any, ...]]] | None = None,
+    ) -> None:
+        self.rows = rows or []
+        self._rows_by_chunk_type = rows_by_chunk_type or {}
         self.executed: list[tuple[str, dict[str, Any]]] = []
 
     async def execute(self, stmt: Any, params: dict[str, Any] | None = None) -> Any:
-        self.executed.append((str(stmt), params or {}))
+        params = params or {}
+        self.executed.append((str(stmt), params))
+        ct = params.get("ct")
+        if isinstance(ct, str) and ct in self._rows_by_chunk_type:
+            return _FakeResult(self._rows_by_chunk_type[ct])
         return _FakeResult(self.rows)
 
 
@@ -76,49 +89,72 @@ class _FakeSession:
 
 
 async def test_top_k_emits_cosine_distance_order_by() -> None:
-    """The query must use the `<=>` operator (cosine distance) and a LIMIT."""
+    """PRD-042 Hybrid retrieval — two chunk_type-filtered SELECTs (table +
+    column), each using `<=>`, with merged distance-ASC ordering at the end.
+    """
+    # row format (PRD-042): (schema, table, chunk_type, column_name, description, distance)
+    payment_amount_desc = "Column: public.payment.amount ..."
+    film_rating_desc = "Column: public.film.rating ..."
     session = _FakeSession(
-        rows=[
-            ("public", "payment", "Table: public.payment\n..."),
-            ("public", "rental", "Table: public.rental\n..."),
-            ("public", "film", "Table: public.film\n..."),
-        ]
+        rows_by_chunk_type={
+            "table": [
+                ("public", "payment", "table", "", "Table: public.payment\n...", 0.10),
+                ("public", "rental", "table", "", "Table: public.rental\n...", 0.30),
+            ],
+            "column": [
+                ("public", "payment", "column", "amount", payment_amount_desc, 0.05),
+                ("public", "film", "column", "rating", film_rating_desc, 0.20),
+            ],
+        }
     )
     embedder = _FakeEmbedder()
     retriever = PgvectorRetriever(session=session, embedder=embedder)  # type: ignore[arg-type]
 
-    chunks = await retriever.top_k("monthly revenue", k=3)
+    chunks = await retriever.top_k("monthly revenue", k=7)
 
     # The retriever embedded the query exactly once with the user text.
     assert embedder.calls == [["monthly revenue"]]
 
-    # PRD-021 → PRD-041: retriever emits `SET LOCAL hnsw.ef_search = 200` to
-    # tame HNSW approximate ANN before the SELECT. Filter to the SELECT call
-    # for the cosine/order/limit checks.
+    # PRD-021 → PRD-041: SET LOCAL hnsw.ef_search precedes SELECT. Filter to
+    # the SELECT calls (those use the `<=>` operator).
     select_calls = [
         (sql, params) for sql, params in session.executed if "<=>" in sql
     ]
-    assert len(select_calls) == 1
-    sql, params = select_calls[0]
-    assert "<=>" in sql
-    assert "ORDER BY embedding" in sql
-    assert "LIMIT :k" in sql
-    assert params["cid"] == DEFAULT_CONNECTION_ID
-    assert params["k"] == 3
-    # Vector literal must be a `[v1,v2,...]` string (pgvector textual form).
-    assert isinstance(params["qv"], str)
-    assert params["qv"].startswith("[") and params["qv"].endswith("]")
-    # 1024 dims separated by commas (1023 commas).
-    assert params["qv"].count(",") == 1023
+    # PRD-042: exactly two chunk_type-filtered SELECTs (table + column).
+    assert len(select_calls) == 2
+    chunk_types_called = sorted(params["ct"] for _sql, params in select_calls)
+    assert chunk_types_called == ["column", "table"]
 
-    # Rows round-trip into SchemaChunks in the DB-returned order.
-    assert tuple(c.table for c in chunks) == ("payment", "rental", "film")
+    # Each SELECT shares the same vector + cid + ORDER BY skeleton.
+    for sql, params in select_calls:
+        assert "<=>" in sql
+        assert "ORDER BY embedding" in sql
+        assert "LIMIT :k" in sql
+        assert "chunk_type = :ct" in sql
+        assert params["cid"] == DEFAULT_CONNECTION_ID
+        assert isinstance(params["qv"], str)
+        assert params["qv"].startswith("[") and params["qv"].endswith("]")
+        assert params["qv"].count(",") == 1023
+
+    # Final result is distance-ASC merged across both chunk types and capped to k.
+    distances_in_order = [0.05, 0.10, 0.20, 0.30]
+    assert tuple(c.table for c in chunks) == ("payment", "payment", "film", "rental")
+    # And the chunk_type field round-trips correctly so the prompt renderer
+    # can distinguish table vs column chunks downstream.
+    assert tuple(c.chunk_type for c in chunks) == (
+        "column", "table", "column", "table"
+    )
+    # All entries are SchemaChunks regardless of chunk_type.
     assert all(isinstance(c, SchemaChunk) for c in chunks)
-    assert chunks[0].description.startswith("Table: public.payment")
+    # Distance ordering is what the merge helper guarantees — exercised
+    # implicitly here, exhaustively in test_split_quota_and_merge.py below.
+    assert len(distances_in_order) == len(chunks)
 
 
 async def test_top_k_respects_custom_connection_id() -> None:
-    """Phase 2 multi-tenant path: `connection_id` is a bound param, not hard-coded."""
+    """Phase 2 multi-tenant path: `connection_id` is a bound param, not hard-coded.
+    PRD-042: both chunk_type SELECTs receive the same cid.
+    """
     from uuid import UUID
 
     other_cid = UUID("11111111-2222-3333-4444-555555555555")
@@ -128,14 +164,15 @@ async def test_top_k_respects_custom_connection_id() -> None:
         embedder=_FakeEmbedder(),
     )
 
-    await retriever.top_k("query", k=3, connection_id=other_cid)
+    await retriever.top_k("query", k=7, connection_id=other_cid)
 
-    # PRD-021: SET LOCAL ef_search 호출이 앞서므로 SELECT 만 필터링.
+    # PRD-042: 2 SELECTs (table + column), both with the custom cid.
     select_calls = [
         (sql, params) for sql, params in session.executed if "<=>" in sql
     ]
-    _, params = select_calls[0]
-    assert params["cid"] == other_cid
+    assert len(select_calls) == 2
+    for _sql, params in select_calls:
+        assert params["cid"] == other_cid
 
 
 async def test_top_k_returns_empty_tuple_for_non_positive_k() -> None:

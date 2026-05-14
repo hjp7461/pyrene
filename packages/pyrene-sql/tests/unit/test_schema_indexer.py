@@ -176,7 +176,9 @@ class _FakeEmbedder:
 
 
 async def test_index_all_round_trips_one_table() -> None:
-    """End-to-end: 1 table → 1 embed call → 1 INSERT → ANALYZE → commit."""
+    """End-to-end: 1 table → 1 table chunk + N column chunks → embed batch
+    → INSERTs → ANALYZE → commit. PRD-042 / ADR-020 Hybrid emit.
+    """
     session = _StubSession(
         responses={
             "tables": [("public", "category")],
@@ -198,19 +200,29 @@ async def test_index_all_round_trips_one_table() -> None:
 
     n = await indexer.index_all()
 
-    assert n == 1
+    # PRD-042: 1 table chunk + 2 column chunks = 3 total.
+    assert n == 3
     assert len(embedder.calls) == 1
-    payload = embedder.calls[0][0]
-    assert "Table: public.category" in payload
-    assert "Description: Film genres." in payload
-    assert "- name text NULL -- Human-readable label." in payload
+    payloads = embedder.calls[0]
+    assert len(payloads) == 3
+    table_payload, *column_payloads = payloads
+    # 1st chunk is the table-level markdown blob (backward compat).
+    assert "Table: public.category" in table_payload
+    assert "Description: Film genres." in table_payload
+    assert "- name text NULL -- Human-readable label." in table_payload
+    # 2nd / 3rd are column-level descriptions in the table's column order.
+    assert column_payloads[0].startswith("Column: public.category.category_id")
+    assert column_payloads[1].startswith("Column: public.category.name")
+    assert "Human-readable label." in column_payloads[1]
 
-    # The indexer must commit at least once (UPSERT + ANALYZE both flush).
+    # The indexer must commit at least once (UPSERTs + ANALYZE both flush).
     assert session.committed >= 1
 
-    # There must be an INSERT and an ANALYZE in the execution log.
+    # There must be INSERTs (3, one per chunk) and an ANALYZE in the log.
     sql_blobs = [sql for sql, _ in session.executed]
-    assert any("INSERT INTO pyrene_schema_embeddings" in s for s in sql_blobs)
+    assert (
+        sum("INSERT INTO pyrene_schema_embeddings" in s for s in sql_blobs) == 3
+    )
     assert any("ANALYZE pyrene_schema_embeddings" in s for s in sql_blobs)
 
 

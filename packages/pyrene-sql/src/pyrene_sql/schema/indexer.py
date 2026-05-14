@@ -74,6 +74,25 @@ def render_chunk_description(
     return "\n".join(lines)
 
 
+def render_column_chunk_description(
+    *, schema: str, table: str, column: ColumnSpec
+) -> str:
+    """PRD-042 / ADR-020 — Hybrid chunk strategy column-level description.
+
+    OQ-2 중간 포맷:
+        'Column: {schema}.{table}.{name} ({data_type}, {NULL|NOT NULL}) -- {comment}'
+
+    Compact enough to keep ≤ 30 tokens per column on average; the optional
+    column comment is the recall-driving suffix (e.g. "rental fee per day").
+    """
+    nullable = "NULL" if column.is_nullable else "NOT NULL"
+    suffix = f" -- {column.description}" if column.description else ""
+    return (
+        f"Column: {schema}.{table}.{column.name} "
+        f"({column.data_type}, {nullable}){suffix}"
+    )
+
+
 class SchemaIndexer:
     """Drives information_schema → embed → UPSERT into `pyrene_schema_embeddings`.
 
@@ -158,7 +177,14 @@ class SchemaIndexer:
     # ------------------------------------------------------------------ chunks
 
     async def _build_chunks(self) -> list[SchemaChunk]:
-        """Pull table list + columns + COMMENT ON bodies → list[SchemaChunk]."""
+        """Pull table list + columns + COMMENT ON bodies → list[SchemaChunk].
+
+        PRD-042 / ADR-020: emits *both* table chunks (1 per table) and
+        column chunks (N per table) so the retriever can do two-stage
+        Hybrid retrieval. Per-table emission order is `table, then columns`
+        so list[i] of `description` aligns 1:1 with list[i] of embedding
+        in the batched embed call downstream.
+        """
         tables = await self._fetch_tables()
         columns_by_table = await self._fetch_columns(tables)
         comments = await self._fetch_comments(tables)
@@ -176,7 +202,8 @@ class SchemaIndexer:
                 )
                 for col in cols
             )
-            description = render_chunk_description(
+            # 1) Table chunk (PRD-002 §4 backward compat).
+            table_description = render_chunk_description(
                 schema=key.schema,
                 table=key.table,
                 table_comment=table_comment,
@@ -187,10 +214,28 @@ class SchemaIndexer:
                     connection_id=self._connection_id,
                     schema=key.schema,
                     table=key.table,
-                    description=description,
+                    description=table_description,
                     columns=cols_with_comments,
+                    chunk_type="table",
+                    column_name="",
                 )
             )
+            # 2) Column chunks (PRD-042 / ADR-020 — Hybrid emit).
+            for col in cols_with_comments:
+                col_description = render_column_chunk_description(
+                    schema=key.schema, table=key.table, column=col
+                )
+                chunks.append(
+                    SchemaChunk(
+                        connection_id=self._connection_id,
+                        schema=key.schema,
+                        table=key.table,
+                        description=col_description,
+                        columns=(col,),
+                        chunk_type="column",
+                        column_name=col.name,
+                    )
+                )
         return chunks
 
     async def _fetch_tables(self) -> list[_TableKey]:
@@ -326,17 +371,25 @@ class SchemaIndexer:
         chunks: list[SchemaChunk],
         embeddings: list[list[float]],
     ) -> None:
-        """Idempotent INSERT … ON CONFLICT keyed on (connection_id, schema, table)."""
+        """Idempotent INSERT … ON CONFLICT keyed on the 5-tuple
+        (connection_id, schema, "table", chunk_type, column_name) — PRD-042
+        / ADR-020 Hybrid chunk strategy. Table chunks use column_name=''
+        as the sentinel; column chunks use the actual column name.
+        """
         sql = text(
             """
             INSERT INTO pyrene_schema_embeddings (
-                connection_id, schema, "table", description, embedding, updated_at
+                connection_id, schema, "table",
+                chunk_type, column_name,
+                description, embedding, updated_at
             )
             VALUES (
-                :connection_id, :schema, :table, :description,
-                CAST(:embedding AS vector), NOW()
+                :connection_id, :schema, :table,
+                :chunk_type, :column_name,
+                :description, CAST(:embedding AS vector), NOW()
             )
-            ON CONFLICT (connection_id, schema, "table") DO UPDATE
+            ON CONFLICT (connection_id, schema, "table", chunk_type, column_name)
+            DO UPDATE
               SET description = EXCLUDED.description,
                   embedding   = EXCLUDED.embedding,
                   updated_at  = NOW()
@@ -352,6 +405,8 @@ class SchemaIndexer:
                     "connection_id": chunk.connection_id,
                     "schema": chunk.schema,
                     "table": chunk.table,
+                    "chunk_type": chunk.chunk_type,
+                    "column_name": chunk.column_name,
                     "description": chunk.description,
                     "embedding": vector_literal,
                 },

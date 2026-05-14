@@ -13,9 +13,13 @@ information_schema.
 from __future__ import annotations
 
 import warnings
+from typing import Literal
 from uuid import UUID
 
 from pyrene_core import StrictBaseModel
+
+ChunkType = Literal["table", "column"]
+"""PRD-042 / ADR-020 — chunk_type closed enum mirroring the SQL CHECK."""
 
 # Suppress the (harmless) Pydantic warning that `schema` shadows a deprecated
 # BaseModel attribute. PRD-002 §4 specifies that field name explicitly so we
@@ -43,12 +47,19 @@ class ColumnSpec(StrictBaseModel):
 
 
 class SchemaChunk(StrictBaseModel):
-    """One embedding-ready chunk per table. PRD-002 §4 + L-03 (table-level).
+    """One embedding-ready chunk. PRD-002 §4 + L-03 + PRD-042 (Hybrid).
 
     The `description` field is what gets embedded — the indexer renders the
     table name, table comment, and column list into markdown and stores it
     verbatim so retrievers (Day 2) can re-use it in the system prompt without
     going back to information_schema.
+
+    PRD-042 / ADR-020 — Hybrid chunk strategy: a `SchemaChunk` is now
+    *either* a table chunk (`chunk_type='table'`, `column_name=''`,
+    `columns=` full column tuple) *or* a column chunk
+    (`chunk_type='column'`, `column_name=col.name`, `columns=(col,)`
+    single-element). The retriever uses `chunk_type` to drive
+    `k_table=2 + k_column=5` two-stage retrieval with table-level dedup.
 
     Field naming note: `schema` matches the DB column `pyrene_schema_embeddings.schema`
     and the SQL identifier of the same name in `information_schema.tables`. Pydantic
@@ -62,6 +73,8 @@ class SchemaChunk(StrictBaseModel):
     table: str
     description: str
     columns: tuple[ColumnSpec, ...]
+    chunk_type: ChunkType = "table"
+    column_name: str = ""
 
 
-__all__ = ["DEFAULT_CONNECTION_ID", "ColumnSpec", "SchemaChunk"]
+__all__ = ["DEFAULT_CONNECTION_ID", "ChunkType", "ColumnSpec", "SchemaChunk"]
