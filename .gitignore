@@ -26,6 +26,14 @@ venv/
 .vscode/
 .idea/
 
+# Python LSP (local dev setup, generator + generated config)
+script/
+pyrightconfig.json
+
+# Local-only artifacts (manual generator + Playwright MCP session output)
+bin/build_manual_pptx.py
+.playwright-mcp/
+
 # Logs
 *.log
 
