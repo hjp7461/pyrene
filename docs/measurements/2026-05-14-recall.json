@@ -1,0 +1,47 @@
+{
+  "git_sha": "cb83684",
+  "timestamp_iso": "2026-05-14 15:24:15 UTC",
+  "embedder_model": "text-embedding-3-small",
+  "embedder_dimensions": 1024,
+  "dataset_path": "packages/pyrene-sql/tests/data/schema_retrieval_30.yaml",
+  "chunks": {
+    "total": 218,
+    "table": 30,
+    "column": 188
+  },
+  "variants": [
+    {
+      "key": "A",
+      "label": "Hybrid + ef_search=200",
+      "ef_search": 200,
+      "chunk_type_filter": null,
+      "top_3_accuracy": 1.0,
+      "top_5_accuracy": 1.0,
+      "latency_p50_ms": 4.615166995790787,
+      "latency_p95_ms": 6.120761697093258,
+      "misses": []
+    },
+    {
+      "key": "B",
+      "label": "Hybrid + ef_search=100",
+      "ef_search": 100,
+      "chunk_type_filter": null,
+      "top_3_accuracy": 1.0,
+      "top_5_accuracy": 1.0,
+      "latency_p50_ms": 4.5158499997342005,
+      "latency_p95_ms": 5.687532743468182,
+      "misses": []
+    },
+    {
+      "key": "C",
+      "label": "Pure (table-only) + ef_search=200",
+      "ef_search": 200,
+      "chunk_type_filter": "table",
+      "top_3_accuracy": 1.0,
+      "top_5_accuracy": 1.0,
+      "latency_p50_ms": 4.596705497533549,
+      "latency_p95_ms": 6.706254050368443,
+      "misses": []
+    }
+  ]
+}
