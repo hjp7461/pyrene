@@ -109,6 +109,14 @@ exclude = [
     "packages/pyrene-budget/tests/integration/conftest\\.py",
 ]
 
+# PRD-043 — bin/measure_chunk_recall.py is imported by
+# tests/unit/test_measure_helpers.py via dynamic sys.path.insert. mypy
+# can't follow the runtime path injection; the script is checked
+# directly in CI via `mypy --strict bin/measure_chunk_recall.py`.
+[[tool.mypy.overrides]]
+module = ["measure_chunk_recall"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = [

@@ -1,0 +1,95 @@
+name: Measure Recall (manual)
+
+# PRD-043 — schema-RAG retriever 의 production OpenAI 환경 3-way A/B/C
+# recall 측정. workflow_dispatch only (cron 없음, 비용/결정성 통제).
+# Secrets 필요: OPENAI_API_KEY. 결과는 artifact 로 다운로드 후 사용자가
+# docs/measurements/ 에 commit.
+#
+# 보안 메모: 본 워크플로는 github.event.* 같은 attacker-controlled 입력을
+# run: step 의 shell 에 직접 보간하지 않는다. 모든 secret/env 는 GitHub
+# 의 ${{ secrets.* }} → workflow-level env 로 거치고, run: step 은 $VAR
+# 로만 참조 (command injection 방지).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: 3-way A/B/C recall (production OpenAI embedder)
+    runs-on: ubuntu-latest
+    env:
+      PG_DSN: postgresql+asyncpg://pyrene:pyrene@localhost:5432/dvdrental
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: pyrene
+          POSTGRES_PASSWORD: pyrene
+          POSTGRES_DB: dvdrental
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pyrene -d dvdrental"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 6
+    steps:
+      - name: Validate required secret
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY secret is not set."
+            echo "::error::Configure it under Settings → Secrets → Actions."
+            exit 2
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Install Python and workspace
+        run: |
+          uv python install 3.13
+          uv sync --all-packages --dev
+
+      - name: Apply initdb scripts (pgvector + schema embeddings + seed)
+        env:
+          PGPASSWORD: pyrene
+        run: |
+          for f in deploy/postgres/initdb/*.sql; do
+            echo "applying $f"
+            psql -h localhost -U pyrene -d dvdrental -f "$f"
+          done
+
+      - name: Run alembic migrations
+        run: uv run alembic upgrade head
+
+      - name: Index schema embeddings (Hybrid emit)
+        run: uv run pyrene-sql index-schema --reindex
+
+      - name: Measure 3-way A/B/C recall
+        run: |
+          uv run python bin/measure_chunk_recall.py \
+              --output measurement-result.md \
+              --json-output measurement-result.json
+          echo "::group::Measurement summary"
+          sed -n '1,40p' measurement-result.md
+          echo "::endgroup::"
+
+      - name: Upload measurement artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recall-measurement-${{ github.run_id }}
+          path: |
+            measurement-result.md
+            measurement-result.json
+          retention-days: 90
+          if-no-files-found: warn
