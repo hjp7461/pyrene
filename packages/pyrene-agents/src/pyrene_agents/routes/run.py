@@ -150,35 +150,26 @@ async def run_agent_with_trace(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
 
-    request_id = str(uuid4())
+    request_uuid = uuid4()
+    request_id = str(request_uuid)
     deps = Deps(db=session, user_context=current, schema_retriever=None)
+    _ = agent  # keep builder result alive for trace correlation
 
-    with logfire.span(
-        SPAN_AGENT_RUN,
-        question_length=len(body.question),
-        spec_id=str(spec_id),
-        spec_name=spec.name,
-        spec_version=version.version,
-        user_id=str(current.user_id),
-        team_id=str(current.team_id),
-        request_id=request_id,
-        demo_endpoint=True,
-    ) as span:
-        _ = agent  # keep builder result alive for trace correlation
-        # NEW: use run_with_retry (vs direct sql_analyst.run) so attempts populate
-        analyst_resp: AnalystResponse = await run_with_retry(
-            body.question, deps=deps, request_id=request_id
-        )
+    # CRIT-1 fix: run_with_retry 자체가 SPAN_AGENT_RUN 을 emit 하므로 outer span
+    # wrap 은 *duplicate*. trace_id 는 FastAPI auto-instrumentation 의 request
+    # 스팬 (또는 run_with_retry 가 만든 child) 에서 가져온다 — trace_id 는 트레이스
+    # 전체에 공유 (only span_id 가 span-specific) 이라 어느 시점에 잡아도 동일.
+    analyst_resp: AnalystResponse = await run_with_retry(
+        body.question, deps=deps, request_id=request_id
+    )
 
-        # Capture trace_id INSIDE the span (after exit, parent context gone)
-        otel_span = trace.get_current_span()
-        otel_ctx = otel_span.get_span_context()
-        trace_id_int: int | None = otel_ctx.trace_id if otel_ctx.is_valid else None
-        span.set_attribute("outcome", "success")
+    otel_span = trace.get_current_span()
+    otel_ctx = otel_span.get_span_context()
+    trace_id_int: int | None = otel_ctx.trace_id if otel_ctx.is_valid else None
 
-    # request_id stamped on the span is the correlation key for audit/cost lookups
-    audit_id = await lookup_audit_event_id(session, current.team_id, UUID(request_id))
-    cost_usd = await lookup_cost_usd(session, current.team_id, UUID(request_id))
+    # request_id 는 hook chain ↔ audit/cost lookup 의 correlation key
+    audit_id = await lookup_audit_event_id(session, current.team_id, request_uuid)
+    cost_usd = await lookup_cost_usd(session, current.team_id, request_uuid)
     logfire_url = build_logfire_trace_url(trace_id_int)
 
     return AnalystResponseWithObservability(
