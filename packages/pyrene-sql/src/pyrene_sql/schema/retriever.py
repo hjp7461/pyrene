@@ -85,13 +85,16 @@ class PgvectorRetriever:
             )
         vector_literal = "[" + ",".join(f"{x:.7g}" for x in query_vec) + "]"
 
-        # PRD-021: pgvector HNSW 는 approximate ANN — ef_search 기본값(40)에서
-        # 후보 셋이 query 마다 다를 수 있어 cosine distance tie 가 아니어도 비결정
-        # 결과 가능. ef_search 를 100 으로 키워 30~100 chunk 수준에서는 사실상
-        # exact 가 되도록 한다. production OpenAI 1024-dim 의 recall 도 향상.
-        # secondary ORDER BY (schema, "table") 은 진짜 동거리 케이스의 alphabetical
-        # 결정성 보장.
-        await self._session.execute(text("SET LOCAL hnsw.ef_search = 100"))
+        # PRD-021 → PRD-041: pgvector HNSW 는 approximate ANN — ef_search
+        # 기본값(40)에서 후보 셋이 query 마다 다를 수 있어 cosine distance tie 가
+        # 아니어도 비결정 결과 가능. PRD-021 에서 100 으로 키웠지만 2026-05-14
+        # main CI 에서 86.7% (26/30) flaky 가 발현 → PRD-041 에서 200 으로 추가
+        # bump (DVD Rental ~30 chunks 의 ~6.7 배 → 사실상 exact 보장).
+        # production OpenAI 1024-dim 의 recall 도 추가 향상. 본 bump 는
+        # 임시방편이며 근본 해법은 PRD-042 (chunk strategy rework, table →
+        # column). secondary ORDER BY (schema, "table") 은 진짜 동거리 케이스의
+        # alphabetical 결정성 보장.
+        await self._session.execute(text("SET LOCAL hnsw.ef_search = 200"))
 
         stmt = text(
             """
