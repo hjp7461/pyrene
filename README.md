@@ -36,6 +36,7 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
 | 코드 커버리지 | **83.41%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
 
 ---
