@@ -27,16 +27,17 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 항목 | 값 |
 |------|---|
 | 워크스페이스 패키지 | **13** (`packages/*`) |
-| 자동화 테스트 | **925** (`pytest --collect-only` · 923 active + 2 live-marker skipped) |
+| 자동화 테스트 | **925** (`pytest --collect-only` · 922 active + 3 live-marker skipped) |
 | 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 268 source files) |
 | 마이그레이션 | Alembic **0001 → 0009** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **13건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy 등) |
+| 아키텍처 결정 기록 (ADR) | **14건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
-| 코드 커버리지 | **83.41%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| 코드 커버리지 | **83.31%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
+| CI 임베딩 fidelity | production OpenAI `text-embedding-3-small @ 1024-dim` *byte-stable replay* (`packages/pyrene-sql/tests/data/embedding_cache.json` · 141 entries · 재생성 `bin/regenerate_embedding_cache.py` · testcontainers 자체 spin up) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
 
 ---
@@ -286,7 +287,7 @@ CI 파이프라인 (`.github/workflows/`):
 
 ---
 
-## 고정 결정 (요약, 16건)
+## 고정 결정 (요약, 17건)
 
 | # | 결정 |
 |---|------|
@@ -306,6 +307,7 @@ CI 파이프라인 (`.github/workflows/`):
 | F-14 | **LLM tool-call retry boundary 는 wrap-then-classify** — `pydantic_ai.UnexpectedModelBehavior` 를 `ModelToolValidationError(RetryableError)` 로 wrap 해 외부 `RetryWrapper` 가 단일 책임으로 retry 담당 (ADR-016) |
 | F-15 | **MCP frontend ↔ gateway = HTTP-only boundary** — `pyrene-mcp-frontend` 는 gateway 를 HTTP API 로만 호출. Python import 금지 → hook chain (RBAC/audit/budget) 단일 진입점 보장 + dashboard 패턴 일관 (ADR-019) |
 | F-16 | **Schema RAG = Hybrid chunk strategy** — `pyrene_schema_embeddings` 에 *table chunk* 1 + *column chunks* N per table 동시 저장 (`chunk_type ∈ {'table','column'}` + `column_name` sentinel). retriever 가 `k_table=2 + k_column=5` 별도 SELECT → distance ASC merge. PRD-002 L-03 escalation 의 본격 후속 (ADR-020) |
+| F-17 | **HNSW `ef_search=200` 정책 본질 = CI 결정성 회복 layer (production 무관)** — production 측정 (3 variants 모두 100%) + CI cache replay 도입으로 *원래의 flaky margin 보호* 가 *artificial worst-case 보호* 였음이 입증. cache replay (*입력 layer*) + ef_search=200 + ORDER BY tie-break (*retrieval layer*) 의 *두 layer 결정성*. 메커니즘 무변경, purpose 재정의 (ADR-021) |
 
 새 결정은 ADR로 기록한 뒤에만 이 표를 갱신한다.
 
