@@ -13,10 +13,13 @@ a module-level factory hook so tests substitute a fake client.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from time import perf_counter
 from typing import Annotated
 from uuid import UUID
 
+import logfire
 from fastapi import APIRouter, Depends, HTTPException, status
+from opentelemetry import trace as otel_trace
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pyrene_auth.dependencies import (
@@ -25,7 +28,7 @@ from pyrene_auth.dependencies import (
     require_any_role,
 )
 from pyrene_core import UserContext
-from pyrene_gateway.mcp_client import StdioMcpClient
+from pyrene_gateway.mcp_client import McpToolError, StdioMcpClient
 from pyrene_gateway.models import MCPServer
 from pyrene_gateway.repository import (
     create_server,
@@ -37,6 +40,8 @@ from pyrene_gateway.schemas import (
     MCPServerCreate,
     MCPServerResponse,
     MCPToolResponse,
+    ToolInvokeRequest,
+    ToolInvokeResponse,
 )
 from pyrene_gateway.tool_discovery import discover_tools
 
@@ -189,6 +194,62 @@ async def list_server_tools_endpoint(
         )
         for t in rows
     ]
+
+
+@servers_router.post("/{server_id}/tools/{tool_name}/invoke")
+async def invoke_tool_endpoint(
+    server_id: UUID,
+    tool_name: str,
+    body: ToolInvokeRequest,
+    current: Annotated[UserContext, Depends(_require_reader)],
+    session: AsyncSession = Depends(_session_proxy),
+) -> ToolInvokeResponse:
+    """PRD-040 Wave 1 / ADR-019. Synchronous wrapper around
+    `StdioMcpClient.call_tool` that *fronts* the gateway's hook chain
+    (RBAC, audit, budget) — frontends MUST go through this endpoint
+    rather than importing `mcp_client` directly (F-15).
+    """
+    server = await get_server_for_team(session, server_id, current.team_id)
+    if server is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="mcp server not found"
+        )
+    if server.transport != "stdio":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"invoke supports stdio only; got {server.transport!r}",
+        )
+
+    with logfire.span(
+        "gateway.mcp.invoke",
+        server_id=str(server_id),
+        tool_name=tool_name,
+        team_id=str(current.team_id),
+    ):
+        client = await _client_factory(server)
+        start = perf_counter()
+        try:
+            try:
+                result = await client.call_tool(tool_name, dict(body.arguments))
+            except McpToolError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"tool {tool_name!r} 실행 실패: {exc}",
+                ) from exc
+        finally:
+            await client.stop()
+        latency_ms = (perf_counter() - start) * 1000.0
+
+        span_ctx = otel_trace.get_current_span().get_span_context()
+        trace_id = (
+            format(span_ctx.trace_id, "032x") if span_ctx.is_valid else ""
+        )
+
+    return ToolInvokeResponse(
+        result=result,
+        latency_ms=latency_ms,
+        trace_id=trace_id,
+    )
 
 
 __all__ = [

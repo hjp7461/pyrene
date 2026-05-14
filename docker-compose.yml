@@ -91,6 +91,30 @@ services:
       retries: 6
       start_period: 20s
 
+  # PRD-040 / ADR-019 — Streamlit frontend that invokes MCP tools through
+  # the gateway HTTP API (HTTP-only boundary, F-15). Lives behind the
+  # `api` profile so reviewers who only need the data plane can skip it.
+  pyrene-mcp-frontend:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: packages/pyrene-mcp-frontend/Dockerfile
+    container_name: pyrene-mcp-frontend
+    ports:
+      - "8502:8502"
+    environment:
+      PYRENE_API_URL: http://pyrene-api:8000
+      LOGFIRE_URL: ${LOGFIRE_URL:-https://logfire.pydantic.dev}
+    depends_on:
+      pyrene-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; urllib.request.urlopen(\"http://localhost:8502/_stcore/health\", timeout=2); sys.exit(0)' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
   # Stub MCP echo server — exposed only to the integration test profile so
   # that the gateway can exercise the full hook chain (BUDGET_PRE → RBAC →
   # DATA_RBAC → tool → AUDIT → BUDGET_POST) without needing a real external
