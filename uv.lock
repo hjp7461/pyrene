@@ -24,6 +24,7 @@ members = [
     "pyrene-dashboard",
     "pyrene-data-rbac",
     "pyrene-gateway",
+    "pyrene-mcp-frontend",
     "pyrene-mcp-tools",
     "pyrene-metering",
     "pyrene-rbac",
@@ -2002,6 +2003,27 @@ requires-dist = [
     { name = "pyrene-auth", editable = "packages/pyrene-auth" },
     { name = "pyrene-core", editable = "packages/pyrene-core" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
+]
+
+[[package]]
+name = "pyrene-mcp-frontend"
+version = "0.1.0"
+source = { editable = "packages/pyrene-mcp-frontend" }
+dependencies = [
+    { name = "cachetools" },
+    { name = "httpx" },
+    { name = "jsonschema" },
+    { name = "pendulum" },
+    { name = "streamlit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cachetools", specifier = ">=5.3" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "jsonschema", specifier = ">=4.21" },
+    { name = "pendulum", specifier = ">=3.0" },
+    { name = "streamlit", specifier = ">=1.36" },
 ]
 
 [[package]]

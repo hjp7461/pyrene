@@ -11,7 +11,7 @@ pattern as `pyrene-agents.schemas`:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import Field
@@ -63,9 +63,40 @@ class MCPToolResponse(StrictBaseModel):
     discovered_at: datetime
 
 
+class ToolInvokeRequest(StrictBaseModel):
+    """Request body for `POST /gateway/servers/{id}/tools/{name}/invoke`.
+
+    PRD-040 / PLAN-040 Wave 1. The gateway delegates to
+    `StdioMcpClient.call_tool` which validates `arguments` against the
+    MCP-published input schema; we trust the MCP layer's validation here.
+    """
+
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolInvokeResponse(StrictBaseModel):
+    """Response for the invoke endpoint.
+
+    `result` is `Any` because MCP tools return arbitrary JSON-serializable
+    payloads (`structuredContent` dict for MCP 2025+, otherwise the raw
+    content list — see `StdioMcpClient.call_tool`).
+
+    `trace_id` is the OpenTelemetry trace ID (32 hex chars) of the invoke
+    span; the frontend renders this as a Logfire deep link (F-12 signal).
+    Empty string when no recording context is active (eg. tests without
+    instrumentation).
+    """
+
+    result: Any
+    latency_ms: float
+    trace_id: str
+
+
 __all__ = [
     "MCPServerCreate",
     "MCPServerResponse",
     "MCPToolResponse",
     "MCPTransport",
+    "ToolInvokeRequest",
+    "ToolInvokeResponse",
 ]
