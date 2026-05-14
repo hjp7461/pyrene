@@ -26,11 +26,11 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 
 | 항목 | 값 |
 |------|---|
-| 워크스페이스 패키지 | **12** (`packages/*`) |
-| 자동화 테스트 | **856** (`pytest --collect-only` · 853 active + 3 live-marker skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 251 source files) |
+| 워크스페이스 패키지 | **13** (`packages/*`) |
+| 자동화 테스트 | **895** (`pytest --collect-only` · 892 active + 3 live-marker skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 266 source files) |
 | 마이그레이션 | Alembic **0001 → 0008** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **11건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error 등) |
+| 아키텍처 결정 기록 (ADR) | **12건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
@@ -110,7 +110,7 @@ graph TB
     dash --> core
 ```
 
-모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"12 패키지" 의 의존 규칙 참조).
+모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"13 패키지" 의 의존 규칙 참조).
 
 ### 4계층 데이터 RBAC (F-08)
 
@@ -130,7 +130,7 @@ flowchart LR
 
 4계층 모두 ALLOW 시에만 도구가 실행된다. 어느 계층이든 명시적 deny 가 있으면 즉시 차단 (deny precedence) — 시나리오 A 의 `payment` 테이블 SELECT 가 정확히 이 경로를 따른다.
 
-### 12 패키지
+### 13 패키지
 
 | 패키지 | 역할 |
 |--------|------|
@@ -146,6 +146,7 @@ flowchart LR
 | `pyrene-budget` | Limit (일/월) · advisory lock · pre/post hook fail-closed (ADR-010) |
 | `pyrene-mcp-tools` | Filesystem (O_NOFOLLOW + sandbox root) · GitHub MCP 래퍼 |
 | `pyrene-dashboard` | Streamlit 어드민 (RBAC matrix · 거부 카운터 · 예산 heatmap · 비용 · 감사) |
+| `pyrene-mcp-frontend` | Streamlit MCP 도구 invocation UI (admin/analyst · jsonschema → form · gateway HTTP-only — ADR-019 / F-15) |
 
 **의존 규칙**: `pyrene-core`만 다른 패키지 의존 0. 신규 도메인 패키지는 `pyrene-core` + `pyrene-auth` + `pyrene-gateway`까지만 의존 허용 (cross-import 금지).
 
@@ -198,9 +199,9 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 컨테이너 없이 워크스페이스에서 직접 작업할 때:
 
 ```bash
-uv sync                              # 의존성 설치 (12 패키지 + dev group)
+uv sync --all-packages               # 의존성 설치 (13 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (856개)
+uv run pytest packages -q            # 전체 테스트 (895개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
@@ -284,7 +285,7 @@ CI 파이프라인 (`.github/workflows/`):
 
 ---
 
-## 고정 결정 (요약, 14건)
+## 고정 결정 (요약, 15건)
 
 | # | 결정 |
 |---|------|
@@ -302,6 +303,7 @@ CI 파이프라인 (`.github/workflows/`):
 | F-12 | 관측성: **Logfire 필수 (선택)** + OTel 호환 |
 | F-13 | 면접 시그널 3가지: **ADR · Pydantic Evals · 공개 Logfire trace** |
 | F-14 | **LLM tool-call retry boundary 는 wrap-then-classify** — `pydantic_ai.UnexpectedModelBehavior` 를 `ModelToolValidationError(RetryableError)` 로 wrap 해 외부 `RetryWrapper` 가 단일 책임으로 retry 담당 (ADR-016) |
+| F-15 | **MCP frontend ↔ gateway = HTTP-only boundary** — `pyrene-mcp-frontend` 는 gateway 를 HTTP API 로만 호출. Python import 금지 → hook chain (RBAC/audit/budget) 단일 진입점 보장 + dashboard 패턴 일관 (ADR-019) |
 
 새 결정은 ADR로 기록한 뒤에만 이 표를 갱신한다.
 
