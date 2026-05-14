@@ -82,6 +82,9 @@ async def _clean_schema_embeddings(app_engine: AsyncEngine) -> AsyncIterator[Non
 async def test_index_all_indexes_every_dvd_rental_table(
     app_session: AsyncSession,
 ) -> None:
+    """PRD-042 / ADR-020 — Hybrid emit: 1 table chunk per BASE TABLE +
+    1 column chunk per column. Total = table_count + column_count.
+    """
     indexer = SchemaIndexer(
         write_session=app_session,
         embedder=_DeterministicEmbedder(),
@@ -89,10 +92,11 @@ async def test_index_all_indexes_every_dvd_rental_table(
 
     n = await indexer.index_all()
 
-    # Count BASE TABLEs in `public` to compare. DVD Rental ships with 15
-    # tables; we assert against information_schema rather than a literal
-    # so the test does not rot if the sample DB ever adds one.
-    expected_row = (
+    # Count BASE TABLEs and columns separately so the assertion mirrors
+    # the indexer's per-emit semantics (1 table chunk + N column chunks
+    # per table). We assert against information_schema instead of literals
+    # so the test does not rot if the sample DB ever adds a column.
+    expected_table_count = (
         await app_session.execute(
             text(
                 "SELECT count(*) FROM information_schema.tables "
@@ -100,9 +104,23 @@ async def test_index_all_indexes_every_dvd_rental_table(
             )
         )
     ).scalar_one()
-    assert n == expected_row, (
-        f"indexer reported {n} chunks but information_schema sees "
-        f"{expected_row} BASE TABLEs"
+    expected_column_count = (
+        await app_session.execute(
+            text(
+                "SELECT count(*) FROM information_schema.columns c "
+                "JOIN information_schema.tables t "
+                "  ON t.table_schema = c.table_schema "
+                " AND t.table_name = c.table_name "
+                "WHERE c.table_schema = 'public' "
+                "  AND t.table_type = 'BASE TABLE'"
+            )
+        )
+    ).scalar_one()
+    expected_total = expected_table_count + expected_column_count
+    assert n == expected_total, (
+        f"indexer reported {n} chunks but expected "
+        f"{expected_total} = {expected_table_count} table + "
+        f"{expected_column_count} column"
     )
 
     row_count = (
@@ -110,7 +128,27 @@ async def test_index_all_indexes_every_dvd_rental_table(
             text("SELECT count(*) FROM pyrene_schema_embeddings")
         )
     ).scalar_one()
-    assert row_count == expected_row
+    assert row_count == expected_total
+
+    # PRD-042: chunk_type breakdown matches the per-emit invariant.
+    table_rows = (
+        await app_session.execute(
+            text(
+                "SELECT count(*) FROM pyrene_schema_embeddings "
+                "WHERE chunk_type = 'table'"
+            )
+        )
+    ).scalar_one()
+    column_rows = (
+        await app_session.execute(
+            text(
+                "SELECT count(*) FROM pyrene_schema_embeddings "
+                "WHERE chunk_type = 'column'"
+            )
+        )
+    ).scalar_one()
+    assert table_rows == expected_table_count
+    assert column_rows == expected_column_count
 
 
 # ----------------------------------------------------------------- idempotency
@@ -249,7 +287,12 @@ async def test_hnsw_index_scan_is_available_after_analyze(
 async def test_indexed_descriptions_include_initdb_table_comments(
     app_session: AsyncSession,
 ) -> None:
-    """The 04-table-comments.sql COMMENT bodies must end up in `description`."""
+    """The 04-table-comments.sql COMMENT bodies must end up in `description`.
+
+    PRD-042 / ADR-020 — restrict to `chunk_type='table'` since column
+    chunks now share the same (schema, table) and the table chunk is the
+    one that carries the table-level COMMENT body.
+    """
     indexer = SchemaIndexer(
         write_session=app_session,
         embedder=_DeterministicEmbedder(),
@@ -260,7 +303,8 @@ async def test_indexed_descriptions_include_initdb_table_comments(
         await app_session.execute(
             text(
                 "SELECT description FROM pyrene_schema_embeddings "
-                'WHERE schema = :s AND "table" = :t'
+                'WHERE schema = :s AND "table" = :t '
+                "  AND chunk_type = 'table'"
             ),
             {"s": "public", "t": "payment"},
         )
