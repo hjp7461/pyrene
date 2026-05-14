@@ -66,6 +66,7 @@ def test_json_roundtrip() -> None:
         logfire_trace_url="https://logfire.example/xyz",
     )
     js = resp.model_dump_json()
+    assert '"cost_usd":"0.00456"' in js
     restored = AnalystResponseWithObservability.model_validate_json(js)
     assert restored.audit_id == audit
     assert restored.cost_usd == Decimal("0.00456")
