@@ -26,16 +26,24 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- gen_random_uuid() lives in pgcrypto; HNSW comes from pgvector (above).
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- PRD-042 / ADR-020 — Hybrid chunk strategy:
+--   chunk_type ∈ {'table','column'}  — closed enum CHECK
+--   column_name TEXT NOT NULL DEFAULT '' — sentinel '' for table chunks
+--   UNIQUE 5-tuple to allow table-chunk + column-chunks per (cid, schema, table)
+-- alembic migration 0009 mirrors this for upgrade-from-existing flows.
 CREATE TABLE IF NOT EXISTS pyrene_schema_embeddings (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id UUID         NOT NULL    DEFAULT '00000000-0000-0000-0000-000000000001',
     schema        TEXT         NOT NULL,
     "table"       TEXT         NOT NULL,
+    chunk_type    TEXT         NOT NULL    DEFAULT 'table'
+                  CHECK (chunk_type IN ('table', 'column')),
+    column_name   TEXT         NOT NULL    DEFAULT '',
     description   TEXT         NOT NULL,
     embedding     vector(1024) NOT NULL,
     updated_at    TIMESTAMPTZ  NOT NULL    DEFAULT NOW(),
     CONSTRAINT pyrene_schema_embeddings_unique_target
-      UNIQUE (connection_id, schema, "table")
+      UNIQUE (connection_id, schema, "table", chunk_type, column_name)
 );
 
 -- HNSW + cosine ops. m=16, ef_construction=64 are the pgvector defaults
