@@ -27,10 +27,10 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 항목 | 값 |
 |------|---|
 | 워크스페이스 패키지 | **13** (`packages/*`) |
-| 자동화 테스트 | **895** (`pytest --collect-only` · 892 active + 3 live-marker skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 266 source files) |
-| 마이그레이션 | Alembic **0001 → 0008** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **12건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary 등) |
+| 자동화 테스트 | **909** (`pytest --collect-only` · 906 active + 3 live-marker skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 267 source files) |
+| 마이그레이션 | Alembic **0001 → 0009** (단일 chain) |
+| 아키텍처 결정 기록 (ADR) | **13건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
@@ -201,7 +201,7 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 ```bash
 uv sync --all-packages               # 의존성 설치 (13 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (895개)
+uv run pytest packages -q            # 전체 테스트 (909개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
@@ -285,7 +285,7 @@ CI 파이프라인 (`.github/workflows/`):
 
 ---
 
-## 고정 결정 (요약, 15건)
+## 고정 결정 (요약, 16건)
 
 | # | 결정 |
 |---|------|
@@ -304,6 +304,7 @@ CI 파이프라인 (`.github/workflows/`):
 | F-13 | 면접 시그널 3가지: **ADR · Pydantic Evals · 공개 Logfire trace** |
 | F-14 | **LLM tool-call retry boundary 는 wrap-then-classify** — `pydantic_ai.UnexpectedModelBehavior` 를 `ModelToolValidationError(RetryableError)` 로 wrap 해 외부 `RetryWrapper` 가 단일 책임으로 retry 담당 (ADR-016) |
 | F-15 | **MCP frontend ↔ gateway = HTTP-only boundary** — `pyrene-mcp-frontend` 는 gateway 를 HTTP API 로만 호출. Python import 금지 → hook chain (RBAC/audit/budget) 단일 진입점 보장 + dashboard 패턴 일관 (ADR-019) |
+| F-16 | **Schema RAG = Hybrid chunk strategy** — `pyrene_schema_embeddings` 에 *table chunk* 1 + *column chunks* N per table 동시 저장 (`chunk_type ∈ {'table','column'}` + `column_name` sentinel). retriever 가 `k_table=2 + k_column=5` 별도 SELECT → distance ASC merge. PRD-002 L-03 escalation 의 본격 후속 (ADR-020) |
 
 새 결정은 ADR로 기록한 뒤에만 이 표를 갱신한다.
 
