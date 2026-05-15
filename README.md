@@ -27,13 +27,14 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 항목 | 값 |
 |------|---|
 | 워크스페이스 패키지 | **14** (`packages/*`) |
-| 자동화 테스트 | **1011** (`pytest --collect-only` · 1008 active + 3 skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 286 source files) |
+| 자동화 테스트 | **1020** (`pytest --collect-only` · 1017 active + 3 skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 289 source files) |
 | 마이그레이션 | Alembic **0001 → 0009** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **21건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope · 문서 패턴 정준화 · leaf-utility cross-import 예외 · Live Agent spec_id 해석 · LLM tool-arg coercion 경계 · aggregate qualified-column 일관성 등) |
+| 아키텍처 결정 기록 (ADR) | **22건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope · 문서 패턴 정준화 · leaf-utility cross-import 예외 · Live Agent spec_id 해석 · LLM tool-arg coercion 경계 · aggregate qualified-column 일관성 · metering summary-cache 미wiring(cost 대시보드 records-only) 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 (Live Agent 시 매 query footer 에 trace link 노출) |
 | Live Agent 시연 | `mcp-frontend /agent` 페이지 — 자연어 → SQL → retry segment → 비용·감사·Logfire link 통합 화면 (PRD-046, mcp-frontend 5번째 페이지) |
+| 비용 대시보드 | `mcp-frontend /cost` 페이지 — `/metering/usage/records` records-only 클라이언트 집계 (총비용·요청수·retry 오버헤드 · 일별 추이 · 모델별 · "최근 ≤200건" 정직 라벨 · summary-cache 미wiring 갭 = ADR-029/F-24, PRD-060, mcp-frontend 6번째 페이지) |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
 | 코드 커버리지 | **83.78%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
@@ -205,7 +206,7 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 ```bash
 uv sync --all-packages               # 의존성 설치 (14 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (1011개)
+uv run pytest packages -q            # 전체 테스트 (1020개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
@@ -265,7 +266,7 @@ uv run pyrene-auth init-admin
 ## 테스트 / 검증
 
 ```bash
-uv run pytest packages -q                                        # 전체 (1011건 — 1008 active + 3 live skip)
+uv run pytest packages -q                                        # 전체 (1020건 — 1017 active + 3 live skip)
 uv run pytest packages/pyrene-sql/tests/evals -q                 # Pydantic Evals 데이터셋
 uv run pytest packages -m integration -q                         # testcontainers Postgres 통합
 uv run pytest packages/pyrene-budget/tests/evals -q              # 보안 evals — 예산 우회 / advisory lock
