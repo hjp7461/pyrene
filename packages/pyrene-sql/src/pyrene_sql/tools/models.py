@@ -138,17 +138,23 @@ class AggregationSpec(StrictBaseModel):
     """A single aggregation column. PRD-004 §4."""
 
     function: Literal["count", "sum", "avg", "min", "max"]
-    column: str  # bare identifier or "*"
+    column: str  # bare identifier, "table.column", or "*"
     alias: str | None = None
 
     @field_validator("column")
     @classmethod
-    def _column_is_bare_or_star(cls, v: str) -> str:
+    def _column_is_bare_qualified_or_star(cls, v: str) -> str:
+        # Join-aggregates must qualify the column to disambiguate joined
+        # tables. Mirrors `RunAggregateInput.group_by` (ADR-028 / F-23):
+        # bare base-table column OR `table.column` joined-table column OR
+        # `*`. `_TABLE_COLUMN` is the same trusted boundary as group_by /
+        # join.on (F-03 code guard).
         if v == "*":
             return v
-        if not _BARE_IDENT.match(v):
+        if not _BARE_IDENT.match(v) and not _TABLE_COLUMN.match(v):
             raise ValueError(
-                f"aggregation column {v!r} must be a bare identifier or '*'"
+                f"aggregation column {v!r} must be a bare identifier, "
+                "'table.column', or '*'"
             )
         return v
 

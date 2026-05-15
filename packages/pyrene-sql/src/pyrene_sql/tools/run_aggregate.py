@@ -68,7 +68,7 @@ def _render_aggregation(agg: AggregationSpec) -> str:
             )
         expr = f"{fn}(*)"
     else:
-        expr = f"{fn}({_check_bare(agg.column)})"
+        expr = f"{fn}({_check_column_ref(agg.column)})"
     if agg.alias is not None:
         expr = f"{expr} AS {_check_bare(agg.alias)}"
     return expr
