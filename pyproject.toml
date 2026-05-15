@@ -13,6 +13,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 pyrene-gateway = { workspace = true }
+pyrene-ui-common = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -47,6 +48,7 @@ src = [
     "packages/pyrene-data-rbac/src",
     "packages/pyrene-budget/src",
     "packages/pyrene-dashboard/src",
+    "packages/pyrene-ui-common/src",
 ]
 
 [tool.ruff.lint]
@@ -166,6 +168,7 @@ source = [
     "packages/pyrene-data-rbac/src",
     "packages/pyrene-budget/src",
     "packages/pyrene-dashboard/src",
+    "packages/pyrene-ui-common/src",
 ]
 omit = [
     "packages/pyrene-dashboard/src/pyrene_dashboard/pages/*.py",
