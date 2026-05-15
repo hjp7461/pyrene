@@ -27,16 +27,16 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 항목 | 값 |
 |------|---|
 | 워크스페이스 패키지 | **14** (`packages/*`) |
-| 자동화 테스트 | **988** (`pytest --collect-only` · 985 active + 3 skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 284 source files) |
+| 자동화 테스트 | **1011** (`pytest --collect-only` · 1008 active + 3 skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 286 source files) |
 | 마이그레이션 | Alembic **0001 → 0009** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **18건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope · 문서 패턴 정준화 · leaf-utility cross-import 예외 등) |
+| 아키텍처 결정 기록 (ADR) | **21건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope · 문서 패턴 정준화 · leaf-utility cross-import 예외 · Live Agent spec_id 해석 · LLM tool-arg coercion 경계 · aggregate qualified-column 일관성 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 (Live Agent 시 매 query footer 에 trace link 노출) |
 | Live Agent 시연 | `mcp-frontend /agent` 페이지 — 자연어 → SQL → retry segment → 비용·감사·Logfire link 통합 화면 (PRD-046, mcp-frontend 5번째 페이지) |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
-| 코드 커버리지 | **83.71%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| 코드 커버리지 | **83.78%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
 | CI 임베딩 fidelity | production OpenAI `text-embedding-3-small @ 1024-dim` *byte-stable replay* (`packages/pyrene-sql/tests/data/embedding_cache.json` · 141 entries · 재생성 `bin/regenerate_embedding_cache.py` · testcontainers 자체 spin up) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
@@ -205,7 +205,7 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 ```bash
 uv sync --all-packages               # 의존성 설치 (14 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (988개)
+uv run pytest packages -q            # 전체 테스트 (1011개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
@@ -265,7 +265,7 @@ uv run pyrene-auth init-admin
 ## 테스트 / 검증
 
 ```bash
-uv run pytest packages -q                                        # 전체 (856건 — 853 active + 3 live skip)
+uv run pytest packages -q                                        # 전체 (1011건 — 1008 active + 3 live skip)
 uv run pytest packages/pyrene-sql/tests/evals -q                 # Pydantic Evals 데이터셋
 uv run pytest packages -m integration -q                         # testcontainers Postgres 통합
 uv run pytest packages/pyrene-budget/tests/evals -q              # 보안 evals — 예산 우회 / advisory lock
