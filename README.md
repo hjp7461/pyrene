@@ -26,17 +26,17 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 
 | 항목 | 값 |
 |------|---|
-| 워크스페이스 패키지 | **13** (`packages/*`) |
-| 자동화 테스트 | **970** (`pytest --collect-only` · 967 active + 3 skipped) |
-| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 281 source files) |
+| 워크스페이스 패키지 | **14** (`packages/*`) |
+| 자동화 테스트 | **988** (`pytest --collect-only` · 985 active + 3 skipped) |
+| 타입 안전 | `mypy --strict` 통과 (워크스페이스 전체 284 source files) |
 | 마이그레이션 | Alembic **0001 → 0009** (단일 chain) |
-| 아키텍처 결정 기록 (ADR) | **16건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope 등) |
+| 아키텍처 결정 기록 (ADR) | **18건** (Pydantic AI 통합 · 예산 fail-closed · Postgres 운영정책 · 테스트 격리 · LLM retry boundary · Logfire 검출 경계 · stale-while-error · MCP frontend HTTP-only boundary · Schema RAG Hybrid chunk strategy · ef_search 결정성 정책 · production-policy-mirroring wrapper · Gateway hook wiring scope · 문서 패턴 정준화 · leaf-utility cross-import 예외 등) |
 | 시나리오 | Phase 1 (Q1/Q2/Q3/F1/F2) + Phase 2 (A: RBAC 거부 · B: 예산 거부 · C: SQL→파일 합성) |
 | 관측성 | Logfire (선택), OTel 호환 span — `LOGFIRE_TOKEN` 설정 시 활성화 (Live Agent 시 매 query footer 에 trace link 노출) |
 | Live Agent 시연 | `mcp-frontend /agent` 페이지 — 자연어 → SQL → retry segment → 비용·감사·Logfire link 통합 화면 (PRD-046, mcp-frontend 5번째 페이지) |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
-| 코드 커버리지 | **83.31%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| 코드 커버리지 | **83.71%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
 | CI 임베딩 fidelity | production OpenAI `text-embedding-3-small @ 1024-dim` *byte-stable replay* (`packages/pyrene-sql/tests/data/embedding_cache.json` · 141 entries · 재생성 `bin/regenerate_embedding_cache.py` · testcontainers 자체 spin up) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
@@ -113,7 +113,7 @@ graph TB
     dash --> core
 ```
 
-모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"13 패키지" 의 의존 규칙 참조).
+모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"14 패키지" 의 의존 규칙 참조).
 
 ### 4계층 데이터 RBAC (F-08)
 
@@ -133,7 +133,7 @@ flowchart LR
 
 4계층 모두 ALLOW 시에만 도구가 실행된다. 어느 계층이든 명시적 deny 가 있으면 즉시 차단 (deny precedence) — 시나리오 A 의 `payment` 테이블 SELECT 가 정확히 이 경로를 따른다.
 
-### 13 패키지
+### 14 패키지
 
 | 패키지 | 역할 |
 |--------|------|
@@ -150,8 +150,9 @@ flowchart LR
 | `pyrene-mcp-tools` | Filesystem (O_NOFOLLOW + sandbox root) · GitHub MCP 래퍼 |
 | `pyrene-dashboard` | Streamlit 어드민 (RBAC matrix · 거부 카운터 · 예산 heatmap · 비용 · 감사) |
 | `pyrene-mcp-frontend` | Streamlit MCP 도구 invocation UI (admin/analyst · jsonschema → form · gateway HTTP-only — ADR-019 / F-15) |
+| `pyrene-ui-common` | 공유 leaf-utility (HTTP client · friendly_error · fetch_or_stale UX — httpx/streamlit 만 의존, 도메인 0 · ADR-025 / F-20) |
 
-**의존 규칙**: `pyrene-core`만 다른 패키지 의존 0. 신규 도메인 패키지는 `pyrene-core` + `pyrene-auth` + `pyrene-gateway`까지만 의존 허용 (cross-import 금지).
+**의존 규칙**: `pyrene-core`만 다른 패키지 의존 0. 신규 도메인 패키지는 `pyrene-core` + `pyrene-auth` + `pyrene-gateway`까지만 의존 허용 (cross-import 금지). 단 *leaf-utility* (`pyrene-ui-common` — 도메인 의존 0) 는 예외로 frontend 가 import 허용 (ADR-025 / F-20 — hook chain 미포함이라 우회 불가).
 
 ---
 
@@ -202,9 +203,9 @@ Postgres 컨테이너는 기동 시 `deploy/postgres/initdb/`의 시드 스크�
 컨테이너 없이 워크스페이스에서 직접 작업할 때:
 
 ```bash
-uv sync --all-packages               # 의존성 설치 (13 패키지 + dev group)
+uv sync --all-packages               # 의존성 설치 (14 패키지 + dev group)
 uv run alembic upgrade head          # 마이그레이션 적용 (Postgres가 5433에 떠 있다고 가정)
-uv run pytest packages -q            # 전체 테스트 (970개)
+uv run pytest packages -q            # 전체 테스트 (988개)
 uv run mypy --strict packages        # 타입 체크
 uv run ruff check && uv run ruff format --check    # 린트/포맷
 ```
