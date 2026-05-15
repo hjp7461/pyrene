@@ -16,12 +16,51 @@ The two cross-validations that warrant call-outs:
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
 from pyrene_core import OrderBySpec, StrictBaseModel
+
+
+class LLMToolInput(StrictBaseModel):
+    """Structured tool-input base that tolerates LLM JSON-stringification.
+
+    `claude-sonnet-4-6` (and peers) serialize non-scalar tool-call
+    arguments as JSON strings — e.g. ``columns='["category_id", "name"]'``
+    instead of the native array. `StrictBaseModel(extra="forbid")` then
+    rejects ``str`` where a list/dict/nested-model is expected, and
+    `agent.tool(retries=0)` (ADR-002/ADR-016) gives no in-loop
+    self-correction, so every attempt fails identically (PRD-057).
+
+    Decode such strings at the tool boundary: a ``str`` value that JSON-
+    decodes to a ``list``/``dict`` is replaced with the decoded value.
+    Scalars and native inputs are untouched, and a decode failure keeps
+    the original value so the existing ValidationError path still fires
+    (no new silent behavior). ADR-027 / F-22. Orthogonal to the retry
+    boundary — ``retries=0`` is unchanged.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_stringified_json(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        coerced: dict[str, Any] | None = None
+        for key, value in data.items():
+            if not isinstance(value, str):
+                continue
+            try:
+                decoded = json.loads(value)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(decoded, (list, dict)):
+                if coerced is None:
+                    coerced = dict(data)
+                coerced[key] = decoded
+        return coerced if coerced is not None else data
 
 # "schema.table" — both segments are simple lowercase identifiers. Same shape
 # as `run_select.py`'s regex so Phase 2 RBAC string match remains uniform.
@@ -123,7 +162,7 @@ class AggregationSpec(StrictBaseModel):
         return v
 
 
-class RunJoinInput(StrictBaseModel):
+class RunJoinInput(LLMToolInput):
     """Input contract for the `run_join` tool. PRD-004 §4.
 
     `select_left` / `select_right` accept `None` to mean "everything from that
@@ -167,7 +206,7 @@ class RunJoinInput(StrictBaseModel):
         return _check_where_safe(v)
 
 
-class RunAggregateInput(StrictBaseModel):
+class RunAggregateInput(LLMToolInput):
     """Input contract for the `run_aggregate` tool. PRD-004 §4.
 
     Phase 1 covers base table + optional single JOIN. The model rejects
