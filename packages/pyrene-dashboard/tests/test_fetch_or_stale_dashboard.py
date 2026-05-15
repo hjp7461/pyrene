@@ -63,8 +63,8 @@ class TestFetchOrStale:
         mock_fetcher = MagicMock(return_value={"ok": True})
 
         with (
-            patch("pyrene_dashboard.api_client.st.session_state", mock_session_state),
-            patch("pyrene_dashboard.api_client.st.spinner") as mock_spinner,
+            patch("pyrene_ui_common.http.st.session_state", mock_session_state),
+            patch("pyrene_ui_common.http.st.spinner") as mock_spinner,
         ):
             mock_spinner.return_value.__enter__ = MagicMock(return_value=None)
             mock_spinner.return_value.__exit__ = MagicMock(return_value=False)
@@ -87,10 +87,10 @@ class TestFetchOrStale:
         mock_fetcher = MagicMock(side_effect=RuntimeError("네트워크 실패"))
 
         with (
-            patch("pyrene_dashboard.api_client.st.session_state", mock_session_state),
-            patch("pyrene_dashboard.api_client.st.spinner") as mock_spinner,
-            patch("pyrene_dashboard.api_client.st.warning") as mock_warning,
-            patch("pyrene_dashboard.api_client.st.error") as mock_error,
+            patch("pyrene_ui_common.http.st.session_state", mock_session_state),
+            patch("pyrene_ui_common.http.st.spinner") as mock_spinner,
+            patch("pyrene_ui_common.http.st.warning") as mock_warning,
+            patch("pyrene_ui_common.http.st.error") as mock_error,
         ):
             mock_spinner.return_value.__enter__ = MagicMock(return_value=None)
             mock_spinner.return_value.__exit__ = MagicMock(return_value=False)
@@ -112,11 +112,11 @@ class TestFetchOrStale:
         mock_fetcher.clear = MagicMock()
 
         with (
-            patch("pyrene_dashboard.api_client.st.session_state", mock_session_state),
-            patch("pyrene_dashboard.api_client.st.spinner") as mock_spinner,
-            patch("pyrene_dashboard.api_client.st.warning") as mock_warning,
-            patch("pyrene_dashboard.api_client.st.error") as mock_error,
-            patch("pyrene_dashboard.api_client.st.button", return_value=False) as mock_button,
+            patch("pyrene_ui_common.http.st.session_state", mock_session_state),
+            patch("pyrene_ui_common.http.st.spinner") as mock_spinner,
+            patch("pyrene_ui_common.http.st.warning") as mock_warning,
+            patch("pyrene_ui_common.http.st.error") as mock_error,
+            patch("pyrene_ui_common.http.st.button", return_value=False) as mock_button,
         ):
             mock_spinner.return_value.__enter__ = MagicMock(return_value=None)
             mock_spinner.return_value.__exit__ = MagicMock(return_value=False)

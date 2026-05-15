@@ -3,6 +3,10 @@
 The package must talk to the gateway via httpx ONLY. Any
 `from pyrene_core import ...` or `from pyrene_gateway import ...` would
 silently violate the HTTP-only boundary and bypass the hook chain.
+
+ADR-025 amendment: `pyrene_ui_common` is the sole allowed `pyrene_*` import —
+a leaf-utility package (httpx/streamlit only, zero domain dep). It carries no
+gateway/domain code, so importing it cannot bypass the hook chain.
 """
 
 from __future__ import annotations
@@ -16,9 +20,10 @@ _SRC_DIR = (
     / "pyrene_mcp_frontend"
 )
 
-# Self-import is allowed. Anything else under `pyrene_` is forbidden.
+# Self-import + the ADR-025 leaf-utility (`pyrene_ui_common`) are allowed.
+# Anything else under `pyrene_` is forbidden.
 _FORBIDDEN_PATTERN = re.compile(
-    r"^\s*(?:from|import)\s+pyrene_(?!mcp_frontend\b)"
+    r"^\s*(?:from|import)\s+pyrene_(?!(?:mcp_frontend|ui_common)\b)"
 )
 
 

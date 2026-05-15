@@ -29,6 +29,7 @@ members = [
     "pyrene-metering",
     "pyrene-rbac",
     "pyrene-sql",
+    "pyrene-ui-common",
 ]
 
 [[package]]
@@ -1934,6 +1935,7 @@ dependencies = [
     { name = "cachetools" },
     { name = "httpx" },
     { name = "pendulum" },
+    { name = "pyrene-ui-common" },
     { name = "streamlit" },
 ]
 
@@ -1942,6 +1944,7 @@ requires-dist = [
     { name = "cachetools", specifier = ">=5.3" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pendulum", specifier = ">=3.0" },
+    { name = "pyrene-ui-common", editable = "packages/pyrene-ui-common" },
     { name = "streamlit", specifier = ">=1.36" },
 ]
 
@@ -2018,6 +2021,7 @@ dependencies = [
     { name = "httpx" },
     { name = "jsonschema" },
     { name = "pendulum" },
+    { name = "pyrene-ui-common" },
     { name = "streamlit" },
 ]
 
@@ -2027,6 +2031,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pendulum", specifier = ">=3.0" },
+    { name = "pyrene-ui-common", editable = "packages/pyrene-ui-common" },
     { name = "streamlit", specifier = ">=1.36" },
 ]
 
@@ -2146,6 +2151,21 @@ requires-dist = [
     { name = "rich", specifier = ">=13.7" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "typer", specifier = ">=0.12" },
+]
+
+[[package]]
+name = "pyrene-ui-common"
+version = "0.1.0"
+source = { editable = "packages/pyrene-ui-common" }
+dependencies = [
+    { name = "httpx" },
+    { name = "streamlit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "streamlit", specifier = ">=1.36" },
 ]
 
 [[package]]
