@@ -23,8 +23,9 @@ from pyrene_mcp_frontend.agent_client import (
 )
 
 _SPEC_UUID = "11111111-1111-1111-1111-111111111111"
+# Canonical phase1 spec name = "sql-analyst" (hyphen) — exporter.PHASE1_SPEC_NAME.
 _SPECS_LIST = [
-    {"id": _SPEC_UUID, "name": "sql_analyst", "team_id": "t", "latest_version": 1},
+    {"id": _SPEC_UUID, "name": "sql-analyst", "team_id": "t", "latest_version": 1},
     {"id": "22222222-2222-2222-2222-222222222222", "name": "other"},
 ]
 
@@ -147,7 +148,7 @@ def test_run_agent_spec_not_found_raises_actionable() -> None:
 
     assert run_called is False
     msg = str(exc.value)
-    assert "sql_analyst" in msg
+    assert "sql-analyst" in msg
     assert "관리자" in msg
     assert exc.value.status_code is None
 

@@ -125,7 +125,7 @@ def run_agent_with_trace(
     question: str,
     jwt: str,
     api_base: str,
-    spec_id: str = "sql_analyst",
+    spec_id: str = "sql-analyst",
 ) -> AnalystRunResult:
     """POST /agents/{spec_id}/run-with-trace and parse the response.
 
