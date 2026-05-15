@@ -42,10 +42,10 @@ class AnalystRunResult:
     sql: str | None = None
     rows: tuple[dict[str, Any], ...] | None = None
     row_count: int | None = None
+    truncated: bool = False
+    analysis: str = ""
     refusal: str | None = None
-    error_message: str | None = None
     attempts: tuple[dict[str, Any], ...] = field(default_factory=tuple)
-    request_id: str | None = None
     audit_id: str | None = None
     cost_usd: str | None = None
     logfire_trace_url: str | None = None
@@ -62,10 +62,10 @@ class AnalystRunResult:
             sql=payload.get("sql"),
             rows=rows,
             row_count=payload.get("row_count"),
+            truncated=bool(payload.get("truncated", False)),
+            analysis=str(payload.get("analysis", "")),
             refusal=payload.get("refusal"),
-            error_message=payload.get("error_message"),
             attempts=attempts,
-            request_id=payload.get("request_id"),
             audit_id=payload.get("audit_id"),
             cost_usd=payload.get("cost_usd"),
             logfire_trace_url=payload.get("logfire_trace_url"),
