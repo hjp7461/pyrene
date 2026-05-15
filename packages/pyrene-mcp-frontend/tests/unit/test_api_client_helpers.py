@@ -99,3 +99,70 @@ def test_logfire_trace_url_builds_path() -> None:
     url = logfire_trace_url("abc123")
     assert url is not None
     assert url.endswith("/traces/abc123")
+
+
+# ---------------------------------------------------------------------------
+# _parse_usage_rows (pure — no Streamlit/httpx runtime)
+# ---------------------------------------------------------------------------
+
+from decimal import Decimal  # noqa: E402
+
+from pyrene_mcp_frontend.api_client import _parse_usage_rows  # noqa: E402
+from pyrene_mcp_frontend.cost_aggregation import UsageRow  # noqa: E402
+
+
+def test_parse_usage_rows_maps_fields_and_decimal() -> None:
+    payload = {
+        "items": [
+            {
+                "id": "00000000-0000-0000-0000-000000000001",
+                "request_id": "11111111-1111-1111-1111-111111111111",
+                "attempt_idx": 0,
+                "user_id": "u",
+                "team_id": "t",
+                "agent_id": None,
+                "model": "claude-sonnet-4-6",
+                "input_tokens": 10,
+                "output_tokens": 20,
+                "cache_read_tokens": 1,
+                "cache_write_tokens": 2,
+                "cost_usd": "0.00012345",
+                "created_at": "2026-05-16T10:00:00+00:00",
+            }
+        ],
+        "page": 1,
+        "size": 200,
+        "total": 1,
+    }
+    rows = _parse_usage_rows(payload)
+    assert isinstance(rows, tuple)
+    assert len(rows) == 1
+    r = rows[0]
+    assert isinstance(r, UsageRow)
+    assert r.request_id == "11111111-1111-1111-1111-111111111111"
+    assert r.cost_usd == Decimal("0.00012345")
+    assert isinstance(r.cost_usd, Decimal)
+    assert r.created_at.year == 2026 and r.created_at.day == 16
+
+
+def test_parse_usage_rows_handles_z_suffix_and_empty() -> None:
+    assert _parse_usage_rows({"items": []}) == ()
+    rows = _parse_usage_rows(
+        {
+            "items": [
+                {
+                    "request_id": "r",
+                    "attempt_idx": 1,
+                    "model": "m",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cache_read_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "cost_usd": "1",
+                    "created_at": "2026-05-16T10:00:00Z",
+                }
+            ]
+        }
+    )
+    assert rows[0].attempt_idx == 1
+    assert rows[0].created_at.tzinfo is not None

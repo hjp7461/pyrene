@@ -1,4 +1,4 @@
-"""Textual-unit invariants for the 4 Streamlit pages.
+"""Textual-unit invariants for the 6 Streamlit pages.
 
 `code-style.md` §"외부 의존 fetch UX 오각형" requires:
     - every page header has a `🔄 새로 고침` button
@@ -100,15 +100,16 @@ def test_button_keys_use_mcp_prefix() -> None:
 
 
 def test_page_count_matches_plan() -> None:
-    """PRD-040 §3 + PRD-046 — 5 pages: servers / tool_discovery / invoke /
-    trace / agent. `agent.py` is the Live SQL Analyst chat page added in
-    Phase 3 (PRD-046)."""
+    """PRD-040 §3 + PRD-046 + PRD-060 — 6 pages: servers / tool_discovery
+    / invoke / trace / agent / cost. `cost.py` 는 records-only 비용
+    대시보드 (PRD-060, ADR-029)."""
     expected = {
         "servers.py",
         "tool_discovery.py",
         "invoke.py",
         "trace.py",
         "agent.py",
+        "cost.py",
     }
     actual = {p.name for p in _page_files()}
     assert actual == expected, f"page set drift: {actual} vs {expected}"
