@@ -18,11 +18,14 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 import httpx
 import streamlit as st
 
+from pyrene_mcp_frontend.cost_aggregation import UsageRow
 from pyrene_ui_common import (
     _auth_headers,
     fetch_me,
@@ -120,6 +123,55 @@ def invoke_tool(
 
 
 # ---------------------------------------------------------------------------
+# /metering/usage/records — cost dashboard (PRD-060, records-only)
+# ---------------------------------------------------------------------------
+
+
+def _parse_usage_rows(payload: Mapping[str, Any]) -> tuple[UsageRow, ...]:
+    """`UsageRecordPage` JSON → 로컬 UsageRow tuple (순수, 테스트 대상).
+
+    cost_usd 는 Decimal 문자열 (정밀 보존). created_at 는 ISO; 'Z'
+    suffix 를 '+00:00' 으로 정규화 후 fromisoformat.
+    """
+    items = payload.get("items", [])
+    rows: list[UsageRow] = []
+    for it in items:
+        rows.append(
+            UsageRow(
+                request_id=str(it["request_id"]),
+                attempt_idx=int(it["attempt_idx"]),
+                model=str(it["model"]),
+                cost_usd=Decimal(str(it["cost_usd"])),
+                created_at=datetime.fromisoformat(
+                    str(it["created_at"]).replace("Z", "+00:00")
+                ),
+                input_tokens=int(it["input_tokens"]),
+                output_tokens=int(it["output_tokens"]),
+                cache_read_tokens=int(it["cache_read_tokens"]),
+                cache_write_tokens=int(it["cache_write_tokens"]),
+            )
+        )
+    return tuple(rows)
+
+
+@st.cache_data(ttl=30)
+def fetch_usage_records(token: str) -> tuple[UsageRow, ...]:
+    """GET /metering/usage/records?page=1&size=200 (최근 ≤200건 윈도우).
+
+    NOT a summary call — `/metering/usage` 는 배포 컨테이너에서 503
+    (ADR-029). records 엔드포인트는 DB 직조회라 200.
+    """
+    client = get_client()
+    r = client.get(
+        "/metering/usage/records",
+        params={"page": 1, "size": 200},
+        headers=_auth_headers(token),
+    )
+    r.raise_for_status()
+    return _parse_usage_rows(r.json())
+
+
+# ---------------------------------------------------------------------------
 # Logfire deep link helper (F-12 signal)
 # ---------------------------------------------------------------------------
 
@@ -137,6 +189,7 @@ __all__ = [
     "fetch_or_stale",
     "fetch_servers",
     "fetch_tools",
+    "fetch_usage_records",
     "format_age_korean",
     "friendly_error",
     "get_base_url",
