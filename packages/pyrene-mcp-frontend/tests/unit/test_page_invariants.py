@@ -100,7 +100,15 @@ def test_button_keys_use_mcp_prefix() -> None:
 
 
 def test_page_count_matches_plan() -> None:
-    """PRD-040 §3 — exactly 4 pages: servers / tool_discovery / invoke / trace."""
-    expected = {"servers.py", "tool_discovery.py", "invoke.py", "trace.py"}
+    """PRD-040 §3 + PRD-046 — 5 pages: servers / tool_discovery / invoke /
+    trace / agent. `agent.py` is the Live SQL Analyst chat page added in
+    Phase 3 (PRD-046)."""
+    expected = {
+        "servers.py",
+        "tool_discovery.py",
+        "invoke.py",
+        "trace.py",
+        "agent.py",
+    }
     actual = {p.name for p in _page_files()}
     assert actual == expected, f"page set drift: {actual} vs {expected}"

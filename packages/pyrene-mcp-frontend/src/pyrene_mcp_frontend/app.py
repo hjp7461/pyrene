@@ -55,6 +55,7 @@ def main() -> None:
             st.Page("pages/tool_discovery.py", title="도구 디스커버리", icon="🧭"),
             st.Page("pages/invoke.py", title="도구 실행", icon="▶️"),
             st.Page("pages/trace.py", title="실행 트레이스", icon="🔍"),
+            st.Page("pages/agent.py", title="SQL Analyst", icon="🤖"),
         ]
     )
     auth.show_logout_button()

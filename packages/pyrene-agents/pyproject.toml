@@ -7,6 +7,8 @@ dependencies = [
     "pyrene-core",
     "pyrene-sql",
     "pyrene-auth",
+    "pyrene-audit",
+    "pyrene-metering",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "pydantic-ai-slim[anthropic,openai]>=1.93,<2.0",
@@ -32,3 +34,5 @@ packages = ["src/pyrene_agents"]
 pyrene-core = { workspace = true }
 pyrene-sql = { workspace = true }
 pyrene-auth = { workspace = true }
+pyrene-audit = { workspace = true }
+pyrene-metering = { workspace = true }
