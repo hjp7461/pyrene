@@ -5,16 +5,21 @@ WORKDIR /app
 # Install uv for dependency management.
 RUN pip install --no-cache-dir uv
 
-# Copy only the frontend package files (ADR-019: no internal pyrene_* deps).
+# Copy the frontend package + the single allowed workspace dep.
+# ADR-025/F-20: pyrene-ui-common is a leaf-utility (httpx/streamlit only,
+# zero domain dep) — the sole permitted pyrene_* dependency. Domain
+# packages (gateway/core/...) are still NOT copied (ADR-019 boundary).
 COPY packages/pyrene-mcp-frontend/pyproject.toml /app/pyproject.toml
 COPY packages/pyrene-mcp-frontend/src /app/src
+COPY packages/pyrene-ui-common /app/pyrene-ui-common
 
-# Install runtime deps + the package itself in editable mode.
-# Mirrors `pyrene-dashboard/Dockerfile` — no `uv sync --all-packages`
-# needed because the frontend has zero workspace dependencies.
+# Install runtime deps, then the leaf-utility first (so the `-e /app`
+# resolution of `pyrene-ui-common` is already satisfied — no PyPI lookup),
+# then the package itself in editable mode.
 RUN uv pip install --system --no-cache \
         "streamlit>=1.36" "httpx>=0.27" "cachetools>=5.3" \
         "pendulum>=3.0" "jsonschema>=4.21" && \
+    uv pip install --system --no-cache /app/pyrene-ui-common && \
     uv pip install --system --no-cache -e /app
 
 EXPOSE 8502
