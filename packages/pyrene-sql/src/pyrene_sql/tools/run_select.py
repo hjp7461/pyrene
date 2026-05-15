@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import Field, field_validator
 
 from pyrene_core import OrderBySpec, StrictBaseModel
+from pyrene_sql.tools.models import LLMToolInput
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +28,7 @@ _QUALIFIED_NAME = re.compile(r"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$")
 _FORBIDDEN_WHERE_PATTERNS = (";", "--", "/*", "*/")
 
 
-class RunSelectInput(StrictBaseModel):
+class RunSelectInput(LLMToolInput):
     """Input contract. PRD-001 §4.1."""
 
     table: str
