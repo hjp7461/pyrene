@@ -37,7 +37,7 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 비용 대시보드 | `mcp-frontend /cost` 페이지 — `/metering/usage/records` records-only 클라이언트 집계 (총비용·요청수·retry 오버헤드 · 일별 추이 · 모델별 · "최근 ≤200건" 정직 라벨 · summary-cache 미wiring 갭 = ADR-029/F-24, PRD-060, mcp-frontend 6번째 페이지) |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
-| 코드 커버리지 | **78%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| 코드 커버리지 | **84%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
 | CI 임베딩 fidelity | production OpenAI `text-embedding-3-small @ 1024-dim` *byte-stable replay* (`packages/pyrene-sql/tests/data/embedding_cache.json` · 141 entries · 재생성 `bin/regenerate_embedding_cache.py` · testcontainers 자체 spin up) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
