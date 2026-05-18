@@ -37,7 +37,7 @@ LLM(ChatGPT 같은 AI)이 사내 데이터베이스에 접근해 자연어 질�
 | 비용 대시보드 | `mcp-frontend /cost` 페이지 — `/metering/usage/records` records-only 클라이언트 집계 (총비용·요청수·retry 오버헤드 · 일별 추이 · 모델별 · "최근 ≤200건" 정직 라벨 · summary-cache 미wiring 갭 = ADR-029/F-24, PRD-060, mcp-frontend 6번째 페이지) |
 | 보안 evals | 42건 (CI: `.github/workflows/security-evals.yml`) |
 | 정적 보안 분석 | CodeQL `security-extended` (~100 query · `.github/workflows/codeql.yml` · GitHub Security tab) |
-| 코드 커버리지 | **83.78%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
+| 코드 커버리지 | **78%** (75% gate · `pytest --cov` · `[tool.coverage]` config) |
 | Production recall | **3 variants × 100%** top-3 @ text-embedding-3-small 1024-dim · 218 chunks · 2026-05-14 ([결과](docs/measurements/2026-05-14-recall-baseline.md)) |
 | CI 임베딩 fidelity | production OpenAI `text-embedding-3-small @ 1024-dim` *byte-stable replay* (`packages/pyrene-sql/tests/data/embedding_cache.json` · 141 entries · 재생성 `bin/regenerate_embedding_cache.py` · testcontainers 자체 spin up) |
 | 데모 결정성 | `.env`만 채우면 `bin/demo-phase1.sh` 4/4 PASS (셸 export 불필요, PRD-019) |
@@ -97,6 +97,8 @@ graph TB
         sql["pyrene-sql"]
         mcp["pyrene-mcp-tools"]
         dash["pyrene-dashboard"]
+        mcpf["pyrene-mcp-frontend"]
+        uicommon["pyrene-ui-common<br/>(leaf-utility)"]
     end
 
     auth --> core
@@ -112,9 +114,11 @@ graph TB
     sql --> core
     mcp --> core
     dash --> core
+    dash --> uicommon
+    mcpf --> uicommon
 ```
 
-모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"14 패키지" 의 의존 규칙 참조).
+모든 패키지가 `pyrene-core` 만 의존하거나, `core` + `auth` + `gateway` 까지로 한정된다 — cross-domain import 금지가 *그래프적으로 가시화된 invariant* (아래 §"14 패키지" 의 의존 규칙 참조). 단, leaf-utility (`pyrene-ui-common` — 도메인 의존 0) 는 예외로 `pyrene-mcp-frontend` · `pyrene-dashboard` 가 import 허용 (F-20 / ADR-025).
 
 ### 4계층 데이터 RBAC (F-08)
 
@@ -290,7 +294,7 @@ CI 파이프라인 (`.github/workflows/`):
 
 ---
 
-## 고정 결정 (요약, 17건)
+## 고정 결정 (요약, 23건)
 
 | # | 결정 |
 |---|------|
@@ -311,6 +315,12 @@ CI 파이프라인 (`.github/workflows/`):
 | F-15 | **MCP frontend ↔ gateway = HTTP-only boundary** — `pyrene-mcp-frontend` 는 gateway 를 HTTP API 로만 호출. Python import 금지 → hook chain (RBAC/audit/budget) 단일 진입점 보장 + dashboard 패턴 일관 (ADR-019) |
 | F-16 | **Schema RAG = Hybrid chunk strategy** — `pyrene_schema_embeddings` 에 *table chunk* 1 + *column chunks* N per table 동시 저장 (`chunk_type ∈ {'table','column'}` + `column_name` sentinel). retriever 가 `k_table=2 + k_column=5` 별도 SELECT → distance ASC merge. PRD-002 L-03 escalation 의 본격 후속 (ADR-020) |
 | F-17 | **HNSW `ef_search=200` 정책 본질 = CI 결정성 회복 layer (production 무관)** — production 측정 (3 variants 모두 100%) + CI cache replay 도입으로 *원래의 flaky margin 보호* 가 *artificial worst-case 보호* 였음이 입증. cache replay (*입력 layer*) + ef_search=200 + ORDER BY tie-break (*retrieval layer*) 의 *두 layer 결정성*. 메커니즘 무변경, purpose 재정의 (ADR-021) |
+| F-18 | **Demo endpoint = 기본 endpoint 와 동일 실행 경로 (정책 우회 코드 분기 0)** — `/run-with-trace` 가 `/run` 과 동일한 `run_with_retry` 경로 + observability augment만. 부분 분기 미허용. "mirror" = 코드 path 동일성 (둘 다 hook chain 미경유 — production wiring 은 의도적 out-of-scope) (ADR-022 · Amended ADR-023) |
+| F-20 | **leaf-utility 패키지는 cross-import 금지의 예외** — `pyrene-ui-common` (도메인 의존 0, httpx/streamlit만) 은 hook chain 미포함이라 import 해도 단일 진입점 우회 불가 → `pyrene-mcp-frontend` · `pyrene-dashboard` 가 import 허용 (ADR-025) |
+| F-21 | **Live Agent spec_id 해석은 frontend 책임 (name→UUID)** — `agent_client._resolve_spec_uuid` 가 이름→UUID 해석, 백엔드 `/agents/{spec_id}/run` 의 `spec_id: UUID` contract 불변. 미등록 시 actionable 한국어 에러 (ADR-026) |
+| F-22 | **LLM tool-arg JSON-stringification 은 tool 경계에서 coerce** — 모델이 비-스칼라 인자를 JSON 문자열로 직렬화할 때 `model_validator(mode="before")` 가 `json.loads` 복원. retry 정책 무변경 (ADR-016 intact · ADR-027) |
+| F-23 | **`AggregationSpec.column` 은 `group_by` 와 동일하게 join-aware** — JOIN aggregate 에서 `table.column` qualified 형식 허용. 내부 contract 일관성 (`_check_column_ref` 재사용, ADR-028) |
+| F-24 | **metering summary-cache 가 deploy/api 미wiring → cost 대시보드 records-only** — `set_summary_cache()` 호출지점 0, production wiring 은 의도적 out-of-scope (Phase 4 후보). 갭을 ADR 로 선제 형식화 (ADR-029) |
 
 새 결정은 ADR로 기록한 뒤에만 이 표를 갱신한다.
 
