@@ -10,7 +10,7 @@ dependencies = [
     "pyrene-audit",
     "pyrene-metering",
     "pydantic>=2.7",
-    "pydantic-settings>=2.3",
+    "pydantic-settings>=2.14.2",
     "pydantic-ai-slim[anthropic,openai]>=1.93,<2.0",
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.29",
