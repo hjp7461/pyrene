@@ -13,7 +13,7 @@ dependencies = [
     # `logfire_setup` (when `instrument_pydantic_ai` is unavailable)
     # remains functional.
     "logfire[httpx]>=4.0",
-    "opentelemetry-sdk>=1.27",
+    "opentelemetry-sdk>=1.44.0",
     # SQLAlchemy instrumentation isn't strictly needed by core, but the
     # `instrument_sqlalchemy` helper inside `logfire_setup` calls into
     # opentelemetry-instrumentation-sqlalchemy. Pin it here so a fresh
