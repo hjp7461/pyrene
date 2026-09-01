@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Shared leaf-utility helpers for Pyrene Streamlit frontends (ADR-025)"
 requires-python = ">=3.13"
 dependencies = [
-    "streamlit>=1.36",
+    "streamlit>=1.62.0",
     "httpx>=0.27",
 ]
 
