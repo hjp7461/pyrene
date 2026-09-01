@@ -5,7 +5,7 @@ description = "Pyrene Phase 2 backbone: User / Team / Role + JWT auth (PRD-007)"
 requires-python = ">=3.13"
 dependencies = [
     "pyrene-core",
-    "pydantic>=2.7",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.3",
     "pydantic[email]>=2.7",
     "sqlalchemy[asyncio]>=2.0",
