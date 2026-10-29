@@ -8,7 +8,7 @@ dependencies = [
     "pyrene-gateway",
     "pydantic>=2.13.5",
     "anyio>=4.0",
-    "mcp>=1.0",
+    "mcp>=1.30.0,<2",
     "fastapi>=0.111",
     "httpx>=0.27",
 ]
