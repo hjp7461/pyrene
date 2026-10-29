@@ -9,8 +9,6 @@
 # Triggers (PRD-037 §4):
 #   - push (main): post-merge baseline refresh on Security tab
 #   - pull_request: early detection before merge
-#   - schedule weekly: re-run with latest CodeQL queries (regression guard
-#     when GitHub ships new query packs)
 #
 # Action SHA pinning per Do #9 (.claude/rules/code-style.md) + PRD-029.
 # Dependabot (PRD-028) auto-updates the SHA + version comment.
@@ -22,9 +20,6 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-  schedule:
-    # Monday 03:00 UTC = KST 12:00 (off-peak GitHub runners).
-    - cron: '0 3 * * 1'
 
 jobs:
   analyze:
@@ -48,7 +43,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
+        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
           languages: ${{ matrix.language }}
           # `security-extended` ships ~100 security queries (vs ~50 in
@@ -60,7 +55,7 @@ jobs:
           build-mode: none
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
+        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
           # Forward-compatible category for future multi-language matrix.
           category: "/language:${{ matrix.language }}"
