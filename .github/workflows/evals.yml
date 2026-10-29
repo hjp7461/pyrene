@@ -18,9 +18,6 @@ on:
       - '.github/workflows/evals.yml'
   push:
     branches: [main, master]
-  schedule:
-    # 02:00 KST nightly (17:00 UTC) — ADR-012 §1.
-    - cron: '0 17 * * *'
   workflow_dispatch:
 
 jobs:

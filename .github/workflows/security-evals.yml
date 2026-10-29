@@ -29,10 +29,6 @@ on:
       - '.github/workflows/security-evals.yml'
   push:
     branches: [main, master]
-  schedule:
-    # 02:30 KST nightly (17:30 UTC) — staggered behind `evals.yml`
-    # (17:00 UTC) so a flaky upstream stage cannot starve us.
-    - cron: '30 17 * * *'
   workflow_dispatch:
 
 jobs:

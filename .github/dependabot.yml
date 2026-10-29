@@ -14,7 +14,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    # 유지보수 모드: version update PR 차단 (security update 는 limit 무관하게 계속 생성)
+    open-pull-requests-limit: 0
     labels:
       - ci
       - dependencies
@@ -26,7 +27,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
+    # 유지보수 모드: version update PR 차단 (security update 는 limit 무관하게 계속 생성)
+    open-pull-requests-limit: 0
     labels:
       - python
       - dependencies
