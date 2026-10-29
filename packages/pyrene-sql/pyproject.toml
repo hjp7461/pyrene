@@ -5,7 +5,7 @@ description = "Pyrene Phase 1: Pydantic AI SQL analyst over PostgreSQL"
 requires-python = ">=3.13"
 dependencies = [
     "pyrene-core",
-    "pydantic>=2.7",
+    "pydantic>=2.13.5",
     "pydantic-settings>=2.3",
     "pydantic-ai-slim[anthropic,openai]>=1.93,<2.0",
     "sqlalchemy[asyncio]>=2.0",

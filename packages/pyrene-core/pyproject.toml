@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Pyrene shared abstractions: BaseModel base, UserContext, common types"
 requires-python = ">=3.13"
 dependencies = [
-    "pydantic>=2.7",
+    "pydantic>=2.13.5",
     # PRD-006 / PLAN-006 — observability is shared across packages so the
     # configure helper lives in core. Logfire vendors its own OTel SDK.
     # PRD-036: `[httpx]` extra previously came in transitively via the

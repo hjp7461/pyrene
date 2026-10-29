@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
     "pyrene-core",
     "pyrene-gateway",
-    "pydantic>=2.7",
+    "pydantic>=2.13.5",
     "anyio>=4.0",
     "mcp>=1.0",
     "fastapi>=0.111",
