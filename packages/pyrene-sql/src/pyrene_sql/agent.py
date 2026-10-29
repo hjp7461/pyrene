@@ -238,7 +238,6 @@ def _trim_to_token_cap(text: str, cap: int) -> str:
     return trimmed + "\n\n[... schema context truncated to fit token budget ...]"
 
 
-@sql_analyst.system_prompt(dynamic=True)
 async def _schema_context(ctx: RunContext[Deps]) -> str:
     """Inject the top-k schema-RAG context for the current user prompt.
 
@@ -277,6 +276,12 @@ async def _schema_context(ctx: RunContext[Deps]) -> str:
 
     rendered = _format_schema_chunks(chunks)
     return _trim_to_token_cap(rendered, SCHEMA_PROMPT_TOKEN_CAP)
+
+
+# Registered by call, not as a decorator: pydantic-ai >=1.107 types the
+# `dynamic=True` decorator's return as the broad `SystemPromptFunc` union,
+# which would erase this function's signature for direct callers (tests).
+sql_analyst.system_prompt(dynamic=True)(_schema_context)
 
 
 def _summarize_input_for_sql(input: RunSelectInput) -> str:
